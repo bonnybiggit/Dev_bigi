@@ -19,11 +19,11 @@ const loginSchema = z
 export function authRoutes(config) {
   const router = Router();
   const cookie = {
-    httpOnly: true,
-    secure: config.NODE_ENV === "production",
-    sameSite: "strict",
-    path: "/",
-  };
+  httpOnly: true,
+  secure: config.NODE_ENV === "production",
+  sameSite: config.NODE_ENV === "production" ? "none" : "strict",
+  path: "/",
+};
   const loginLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
     limit: 10,

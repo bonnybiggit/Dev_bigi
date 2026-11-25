@@ -104,7 +104,9 @@ export default function ExaminationWorkspace() {
           <p>
             <Link
               className="text-link"
-              to={administrator ? "/school/examinations" : "/teacher"}
+              to={
+                administrator ? "/school/examinations" : "/teacher/examinations"
+              }
             >
               Return to examination list
             </Link>

@@ -9,6 +9,8 @@ export default function EntityPicker({
   selected,
   disabled,
   allowArchived = false,
+  teachingOnly = false,
+  activeOnly = false,
 }) {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
@@ -28,7 +30,10 @@ export default function EntityPicker({
             search,
             page,
             limit: 5,
-            ...(kind === "guardians" ? { status: "active" } : {}),
+            ...(kind === "guardians" || activeOnly ? { status: "active" } : {}),
+            ...(kind === "staff" && teachingOnly
+              ? { category: "teaching" }
+              : {}),
           },
           signal: controller.signal,
         })
@@ -44,7 +49,7 @@ export default function EntityPicker({
       clearTimeout(timer);
       controller.abort();
     };
-  }, [search, page, kind, revision]);
+  }, [search, page, kind, revision, teachingOnly, activeOnly]);
   return (
     <section className="entity-picker">
       <label htmlFor={id}>

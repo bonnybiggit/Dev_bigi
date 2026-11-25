@@ -41,6 +41,7 @@ export default function ConfigurationFields({ fields, values, onChange }) {
                 id={`field-${field.name}`}
                 name={field.name}
                 type={field.type || "text"}
+                disabled={field.disabled}
                 value={values[field.name] ?? ""}
                 onChange={onChange}
                 required={field.required}

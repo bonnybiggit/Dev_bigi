@@ -45,6 +45,19 @@ export const studentInput = z
 export const studentListInput = z
   .object({
     search: z.string().trim().max(100).default(""),
+    applicationStatus: z
+      .enum([
+        "",
+        "awaiting_form",
+        "form_received",
+        "under_review",
+        "approved",
+        "rejected",
+        "withdrawn",
+        "cancelled",
+        "enrolled",
+      ])
+      .default(""),
     sessionId: z.union([id, z.literal("")]).default(""),
     classId: z.union([id, z.literal("")]).default(""),
     arm: z

@@ -65,9 +65,19 @@ export default function StudentForm({ record, options, onClose, onSaved }) {
               ? "Update this student profile. Use the separate status controls to activate, deactivate, or archive."
               : "Register a student in your school. New student records start active."}
           </p>
+          {record?.applicationId && (
+            <p className="field-help">
+              This admission number was generated from the original application
+              and is permanently locked.
+            </p>
+          )}
           <fieldset className="staff-form-fields" disabled={busy}>
             <ConfigurationFields
-              fields={studentPersonalFields}
+              fields={studentPersonalFields.map((field) =>
+                field.name === "admissionNumber" && record?.applicationId
+                  ? { ...field, disabled: true }
+                  : field,
+              )}
               values={values}
               onChange={change}
             />

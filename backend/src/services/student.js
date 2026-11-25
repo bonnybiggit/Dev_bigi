@@ -3,7 +3,7 @@ import { SchoolClass } from "../models/SchoolClass.js";
 import { AcademicSession } from "../models/AcademicSession.js";
 import { mutateConfiguration, fail } from "./schoolConfiguration.js";
 export const studentListFields =
-  "_id admissionNumber firstName middleName lastName sessionId classId arm admissionStatus status";
+  "_id admissionNumber firstName middleName lastName sessionId classId arm admissionStatus status applicationId applicationReference";
 export const studentDetailFields = `${studentListFields} dateOfBirth gender address admissionDate previousSchool`;
 export const studentDetails = (record) =>
   Object.fromEntries(
@@ -53,9 +53,24 @@ export async function validatePlacement(
       "New placement and activation require an active session, class, and arm.",
     );
 }
-export function saveStudent({ schoolId, userId, id, input }) {
-  return mutateConfiguration(schoolId, async (transaction) => {
+export function saveStudent({
+  schoolId,
+  userId,
+  id,
+  input,
+  transaction = null,
+  application = null,
+}) {
+  const operation = async (transaction) => {
     const record = id ? await ownedStudent(schoolId, id, transaction) : null;
+    if (
+      record?.applicationId &&
+      record.admissionNumber !== input.admissionNumber
+    )
+      fail(
+        409,
+        "Application-generated admission numbers are permanent and cannot be changed.",
+      );
     if (record?.status === "archived")
       fail(409, "Restore the archived student to inactive before editing.");
     if (
@@ -83,9 +98,25 @@ export function saveStudent({ schoolId, userId, id, input }) {
     }
     return (
       await Student.create(
-        [{ ...input, schoolId, createdBy: userId, updatedBy: userId }],
+        [
+          {
+            ...input,
+            ...(application
+              ? {
+                  applicationId: application._id,
+                  applicationReference: application.reference,
+                }
+              : {}),
+            schoolId,
+            createdBy: userId,
+            updatedBy: userId,
+          },
+        ],
         { session: transaction },
       )
     )[0];
-  });
+  };
+  return transaction
+    ? operation(transaction)
+    : mutateConfiguration(schoolId, operation);
 }

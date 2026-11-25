@@ -1,6 +1,10 @@
 import mongoose from "mongoose";
 const schoolSchema = new mongoose.Schema(
   {
+    studentFinanceEnabled: { type: Boolean, default: false },
+    documentPrefix: { type: String, default: "SCH", maxlength: 12 },
+    admissionPrivacyNotice: { type: String, default: "", maxlength: 2000 },
+    applicationChecklist: { type: [String], default: undefined },
     name: { type: String, required: true, trim: true, maxlength: 160 },
     city: { type: String, required: true, trim: true },
     country: { type: String, required: true, trim: true },

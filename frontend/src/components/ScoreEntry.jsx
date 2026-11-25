@@ -28,7 +28,18 @@ export default function ScoreEntry({
     [confirmation, setConfirmation] = useState(null),
     [confirmError, setConfirmError] = useState(""),
     [history, setHistory] = useState(null);
-  const schoolClass = context.classes.find((item) => item._id === exam.classId);
+  const assignedClass = context.classes.find(
+    (item) => item._id === exam.classId,
+  );
+  const schoolClass =
+    exam.authorisedArmsBySubject && filters.subjectId
+      ? {
+          ...assignedClass,
+          arms: (exam.authorisedArmsBySubject[filters.subjectId] || []).filter(
+            Boolean,
+          ),
+        }
+      : assignedClass;
   const changedRows = (data?.records || []).filter(
     (row) =>
       row.editable &&
@@ -185,7 +196,11 @@ export default function ScoreEntry({
               value={filters.subjectId}
               required
               onChange={(event) =>
-                setFilters({ ...filters, subjectId: event.target.value })
+                setFilters({
+                  ...filters,
+                  subjectId: event.target.value,
+                  ...(exam.authorisedArmsBySubject ? { arm: "" } : {}),
+                })
               }
             >
               <option value="">Select subject</option>

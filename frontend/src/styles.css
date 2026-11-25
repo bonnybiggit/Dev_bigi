@@ -2014,3 +2014,430 @@ td:first-child {
     break-inside: avoid;
   }
 }
+
+/* Teacher workspace uses the shared cards, tables and navy navigation. */
+.teacher-workspace > .panel,
+.teacher-workspace > section,
+.teacher-workspace > .stats-grid {
+  margin-bottom: 24px;
+}
+.teacher-workspace .panel {
+  padding: 24px;
+}
+.teacher-workspace article + article {
+  border-top: 1px solid var(--border, #e2e8f0);
+  margin-top: 20px;
+  padding-top: 20px;
+}
+.teacher-workspace .stat-card strong {
+  font-size: 2rem;
+}
+.teacher-workspace .stat-card h3 {
+  text-transform: capitalize;
+}
+.teacher-workspace form {
+  display: grid;
+  gap: 16px;
+  max-width: 540px;
+}
+.teacher-workspace label {
+  display: grid;
+  gap: 8px;
+}
+.teacher-workspace dl {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 20px;
+}
+.teacher-workspace dt {
+  color: #64748b;
+  text-transform: capitalize;
+}
+.teacher-workspace dd {
+  margin: 6px 0 0;
+  overflow-wrap: anywhere;
+}
+.teacher-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+.teacher-filters label {
+  flex: 1 1 180px;
+}
+.teacher-workspace .table-scroll {
+  margin: 20px 0;
+}
+.teacher-workspace .panel > label {
+  margin: 16px 0;
+  max-width: 540px;
+}
+@media (max-width: 600px) {
+  .teacher-workspace .panel {
+    padding: 16px;
+  }
+}
+.teacher-skeleton {
+  min-height: 120px;
+  border-radius: 12px;
+  background: linear-gradient(90deg, #e8edf3 25%, #f4f6fa 50%, #e8edf3 75%);
+  background-size: 200% 100%;
+  animation: teacher-loading 1.5s ease-in-out infinite;
+}
+@keyframes teacher-loading {
+  to {
+    background-position: -200% 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .teacher-skeleton {
+    animation: none;
+  }
+}
+
+/* Student sign-in keeps the shared branding readable on its light card. */
+.student-login .brand {
+  color: #111f38;
+  margin-bottom: 24px;
+}
+.student-login .brand-subtitle {
+  color: #526580;
+}
+.student-login form {
+  display: grid;
+  gap: 16px;
+  margin-top: 24px;
+}
+.student-login label {
+  display: grid;
+  gap: 8px;
+}
+.student-login .password-card > p {
+  color: #526580;
+  line-height: 1.6;
+  margin-top: 16px;
+}
+
+.assignment-workspace .assignment-form {
+  max-width: none;
+}
+.assignment-workspace fieldset {
+  border: 1px solid #dce4ef;
+  border-radius: 8px;
+  padding: 16px;
+  margin: 16px 0;
+}
+.assignment-workspace .entity-picker {
+  margin-bottom: 20px;
+}
+.assignment-workspace .assignment-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 16px 0;
+}
+.assignment-workspace .assignment-check input,
+.assignment-workspace td input[type="checkbox"] {
+  width: auto;
+  min-width: 18px;
+  height: 18px;
+  margin: 0;
+  flex-shrink: 0;
+}
+.assignment-workspace .button-row {
+  flex-wrap: wrap;
+}
+.assignment-workspace td {
+  vertical-align: top;
+}
+.assignment-workspace td .button-row {
+  min-width: 230px;
+}
+
+/* Numbered registration documents use local A4 browser printing. */
+.admissions-workspace form {
+  max-width: none;
+}
+.admissions-workspace fieldset {
+  border: 1px solid #dce4ef;
+  border-radius: 8px;
+  padding: 18px;
+  margin-bottom: 20px;
+}
+.admissions-workspace .check-line,
+.print-controls .check-line {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 12px 0;
+}
+.check-line input[type="checkbox"] {
+  width: auto;
+  min-width: 18px;
+  height: 18px;
+  margin: 2px 0 0;
+  flex-shrink: 0;
+}
+.document-catalogue {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 18px;
+}
+.document-catalogue article {
+  border: 1px solid #e0e7f1;
+  border-radius: 10px;
+  padding: 18px;
+  margin: 0 !important;
+}
+.document-catalogue article h3 {
+  margin-bottom: 10px;
+}
+.application-guardian {
+  border-top: 1px solid #dce4ef;
+  padding-top: 18px;
+  margin: 20px 0;
+}
+.admissions-workspace .button-row {
+  flex-wrap: wrap;
+}
+.admissions-workspace label,
+.medical-editor label {
+  display: grid;
+  gap: 8px;
+}
+.admissions-workspace details > summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+.medical-editor {
+  padding: 24px;
+  margin: 24px 0;
+}
+.medical-editor form {
+  display: grid;
+  gap: 18px;
+  margin-top: 18px;
+}
+.print-controls {
+  padding: 24px;
+  margin-bottom: 24px;
+}
+.print-controls button {
+  margin: 12px 10px 0 0;
+}
+.registration-print-preview {
+  overflow-x: auto;
+  padding: 8px 4px 24px;
+}
+.registration-form-sheet {
+  box-sizing: border-box;
+  width: 190mm;
+  min-height: 277mm;
+  padding: 10mm;
+  margin: 0 auto 24px;
+  background: white;
+  border: 1px solid #dce3ed;
+  box-shadow: 0 5px 20px #14284b12;
+  color: #111827;
+  display: flex;
+  flex-direction: column;
+  font-size: 10pt;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+.registration-form-header {
+  display: flex;
+  gap: 6mm;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  border-bottom: 1.5px solid #14284b;
+  padding-bottom: 4mm;
+  margin-bottom: 3mm;
+}
+.registration-form-header img {
+  width: 19mm;
+  height: 19mm;
+  object-fit: contain;
+}
+.registration-form-header h1 {
+  font-size: 18pt;
+  margin: 0 0 2mm;
+  line-height: 1.2;
+}
+.registration-form-header p {
+  margin: 0;
+  font-size: 9pt;
+}
+.form-reference {
+  display: flex;
+  justify-content: space-between;
+  gap: 5mm;
+  font-size: 9pt;
+  margin-bottom: 3mm;
+}
+.registration-form-sheet h2 {
+  text-align: center;
+  font-size: 14pt;
+  margin: 2mm 0;
+}
+.registration-form-sheet h3 {
+  font-size: 11pt;
+  margin: 4mm 0 2mm;
+}
+.form-page-title {
+  border-bottom: 1px solid #c6cfdb;
+  padding-bottom: 2mm;
+}
+.form-sheet-content {
+  flex: 1;
+  padding: 0;
+}
+.paper-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3mm 6mm;
+  clear: both;
+}
+.paper-field {
+  break-inside: avoid;
+}
+.paper-field > span {
+  display: block;
+  font-size: 9pt;
+  color: #374151;
+}
+.paper-wide {
+  grid-column: 1 / -1;
+}
+.writing-line {
+  min-height: 8mm;
+  border-bottom: 1px solid #6b7280;
+  padding: 1mm 0;
+  white-space: pre-wrap;
+}
+.paper-large .writing-line {
+  min-height: 16mm;
+}
+.passport-placeholder {
+  width: 32mm;
+  height: 37mm;
+  border: 1px dashed #6b7280;
+  margin: 3mm 0 5mm auto;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  padding: 4mm;
+  font-size: 9pt;
+}
+.stamp-placeholder {
+  width: 56mm;
+  height: 24mm;
+  border: 1px dashed #6b7280;
+  margin: 6mm 0 3mm auto;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  font-size: 9pt;
+}
+.signature-area {
+  margin-top: 5mm;
+}
+.paper-notice {
+  white-space: pre-wrap;
+  font-size: 9pt;
+}
+.paper-checklist {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3mm;
+  margin-bottom: 4mm;
+}
+.paper-checklist > div {
+  display: flex;
+  align-items: flex-start;
+  gap: 3mm;
+}
+.paper-checkbox {
+  width: 4mm;
+  height: 4mm;
+  border: 1px solid #374151;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 8pt;
+}
+.paper-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  margin: 4mm 0;
+  white-space: normal;
+}
+.paper-table th,
+.paper-table td {
+  border: 1px solid #6b7280;
+  padding: 2mm;
+  height: 11mm;
+  font-size: 9pt;
+  min-width: 0;
+  white-space: normal;
+}
+.paper-table th {
+  background: #eef2f7;
+}
+.registration-form-footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 2mm;
+  border-top: 1px solid #c6cfdb;
+  padding-top: 3mm;
+  margin-top: 6mm;
+  font-size: 7pt;
+}
+.paper-cancelled {
+  border: 2px solid #991b1b;
+  text-transform: uppercase;
+  padding: 2mm;
+  color: #991b1b;
+  text-align: center;
+  font-weight: 700;
+}
+@page registration {
+  size: A4;
+  margin: 10mm;
+}
+@media print {
+  .registration-print-preview {
+    overflow: visible;
+    padding: 0;
+  }
+  .registration-form-sheet {
+    page: registration;
+    width: 190mm;
+    min-height: 277mm;
+    border: 0;
+    box-shadow: none;
+    padding: 0;
+    margin: 0;
+    break-after: page;
+  }
+  .registration-form-sheet:last-child {
+    break-after: auto;
+  }
+  .registration-form-header,
+  .registration-form-footer,
+  .paper-field,
+  .paper-section,
+  .paper-table tr,
+  .signature-area {
+    break-inside: avoid;
+  }
+  .registration-form-sheet * {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+}

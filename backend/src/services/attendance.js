@@ -1,7 +1,9 @@
+import { teacherAccess, attendancePermitted } from "./teacherAccess.js";
 import mongoose from "mongoose";
 import { Attendance } from "../models/Attendance.js";
 import { AttendanceAudit } from "../models/AttendanceAudit.js";
 import { Student } from "../models/Student.js";
+import { User } from "../models/User.js";
 import { Staff } from "../models/Staff.js";
 import { AcademicSession } from "../models/AcademicSession.js";
 import { SchoolClass } from "../models/SchoolClass.js";
@@ -161,6 +163,34 @@ export async function attendanceRoster(schoolId, kind, input) {
 }
 export function markAttendance(schoolId, actor, kind, input) {
   return mutateConfiguration(schoolId, async (transaction) => {
+    if (actor.role === "teacher") {
+      const staff = await Staff.findOne({
+        _id: actor.staffId,
+        schoolId,
+        status: "active",
+        category: "teaching",
+      }).session(transaction);
+      const account = await User.findOne({
+        _id: actor._id,
+        schoolId,
+        role: "teacher",
+        isActive: true,
+      })
+        .select("+sessionVersion")
+        .session(transaction);
+      if (
+        !account ||
+        account.sessionVersion !== actor.sessionVersion ||
+        !staff ||
+        kind !== "student" ||
+        !attendancePermitted(
+          staff,
+          await teacherAccess(staff, schoolId, transaction),
+          input,
+        )
+      )
+        fail(403, "Attendance permission is unavailable.");
+    }
     const context =
       kind === "student" ? await placement(schoolId, input, transaction) : null;
     const records = [];
@@ -294,13 +324,14 @@ export function reportRange(input) {
     fail(400, "Choose an ordered report range of at most 367 days.");
   return { from, to };
 }
-export async function attendanceReport(schoolId, input) {
+export async function attendanceReport(schoolId, input, exactArm = false) {
   const { from, to } = reportRange(input);
   const filter = {
     schoolId,
     kind: input.kind,
     date: { $gte: new Date(from), $lte: new Date(to) },
   };
+  if (exactArm) filter.arm = input.arm;
   for (const [field, Target] of [
     ["sessionId", AcademicSession],
     ["classId", SchoolClass],

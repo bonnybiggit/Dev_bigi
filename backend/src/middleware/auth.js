@@ -2,6 +2,8 @@ import jwt from "jsonwebtoken";
 import { User } from "../models/User.js";
 import { School } from "../models/School.js";
 import { Staff } from "../models/Staff.js";
+import { Student } from "../models/Student.js";
+import { teacherAccess } from "../services/teacherAccess.js";
 export const authenticate = (config) => async (req, res, next) => {
   try {
     const claims = jwt.verify(
@@ -19,6 +21,17 @@ export const authenticate = (config) => async (req, res, next) => {
       req.school = school;
     }
     req.user = user;
+    if (user.role === "student") {
+      req.student = await Student.findOne({
+        _id: user.studentId,
+        schoolId: user.schoolId,
+        status: "active",
+      });
+      if (!req.student)
+        return res
+          .status(403)
+          .json({ message: "Student portal access is unavailable." });
+    }
     if (user.role === "teacher") {
       const staff = await Staff.findOne({
         _id: user.staffId,
@@ -31,6 +44,7 @@ export const authenticate = (config) => async (req, res, next) => {
           .status(403)
           .json({ message: "Teaching staff access is unavailable." });
       req.teacher = staff;
+      req.teacherAccess = await teacherAccess(staff, user.schoolId);
     }
     next();
   } catch (error) {
@@ -48,13 +62,14 @@ export const requireRole = (role) => (req, res, next) =>
 export const publicUser = (user) => ({
   id: user.id,
   name: user.name,
-  email: user.email,
+  ...(user.role !== "student" ? { email: user.email } : {}),
   role: user.role,
   phone: user.phone,
   schoolId: user.schoolId,
   isActive: user.isActive,
   mustChangePassword: user.mustChangePassword,
   staffId: user.staffId,
+  ...(user.role === "student" ? { studentId: user.studentId } : {}),
 });
 export const requireRoles =
   (...roles) =>

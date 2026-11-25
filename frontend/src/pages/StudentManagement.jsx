@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { api } from "../lib/api";
 import { configurationError } from "../lib/academicConfiguration";
+import { applicationStatusLabels } from "../lib/admissions";
 import { studentName, studentLabels } from "../lib/students";
 import useStudentOptions from "../hooks/useStudentOptions";
 import StudentForm from "../components/StudentForm";
@@ -23,6 +24,7 @@ const initialFilters = {
   arm: "",
   status: "",
   admissionStatus: "",
+  applicationStatus: "",
 };
 export default function StudentManagement() {
   const navigate = useNavigate();
@@ -117,6 +119,10 @@ export default function StudentManagement() {
         <div>
           <div className="eyebrow">STUDENTS & ADMISSIONS</div>
           <h1>Students & admissions</h1>
+          <p>
+            <Link to="/school/applications">Admission applications</Link> -{" "}
+            <Link to="/school/forms">Forms & Documents</Link>
+          </p>
           <p>
             Register students, manage placements, and maintain admission
             records.
@@ -237,6 +243,18 @@ export default function StudentManagement() {
             {selectedClass?.arms.map((arm) => (
               <option key={arm} value={arm}>
                 {arm}
+              </option>
+            ))}
+          </select>
+          <select
+            aria-label="Application status filter"
+            value={filters.applicationStatus}
+            onChange={(e) => filter("applicationStatus", e.target.value)}
+          >
+            <option value="">All application statuses</option>
+            {Object.entries(applicationStatusLabels).map(([key, label]) => (
+              <option key={key} value={key}>
+                {label}
               </option>
             ))}
           </select>

@@ -20,7 +20,11 @@ export function attendanceRoutes() {
   const router = Router();
   router.get("/reports", async (req, res) =>
     res.json(
-      await attendanceReport(req.user.schoolId, reportInput.parse(req.query)),
+      await attendanceReport(
+        req.user.schoolId,
+        reportInput.parse(req.query),
+        req.user.role === "teacher",
+      ),
     ),
   );
   router.get("/:kind/history/:personId", async (req, res) => {
@@ -36,6 +40,7 @@ export function attendanceRoutes() {
       await attendanceReport(
         req.user.schoolId,
         reportInput.parse({ ...query, kind, personId }),
+        req.user.role === "teacher",
       ),
     );
   });
@@ -82,13 +87,10 @@ export function attendanceRoutes() {
     const id = objectId.parse(req.params.id);
     if (!(await Attendance.exists({ _id: id, schoolId: req.user.schoolId })))
       fail(404, "Attendance record not found.");
-    res
-      .status(405)
-      .set("Allow", "GET, PUT")
-      .json({
-        message:
-          "Attendance cannot be deleted. Correct its status with a reason; all changes are audited.",
-      });
+    res.status(405).set("Allow", "GET, PUT").json({
+      message:
+        "Attendance cannot be deleted. Correct its status with a reason; all changes are audited.",
+    });
   });
   return router;
 }

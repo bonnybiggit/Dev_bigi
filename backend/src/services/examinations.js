@@ -1,3 +1,8 @@
+import {
+  teacherAccess,
+  examAssignmentRows,
+  examAssignmentFilter,
+} from "./teacherAccess.js";
 import { Examination } from "../models/Examination.js";
 import {
   Result,
@@ -46,15 +51,25 @@ export async function ownedExam(req, id, transaction = null) {
     )
       fail(403, "Teacher access changed. Sign in again.");
     req.teacher = staff;
+    req.teacherAccess = await teacherAccess(
+      staff,
+      req.user.schoolId,
+      transaction,
+    );
   }
   const exam = await Examination.findOne({
     schoolId: req.user.schoolId,
     _id: id,
-    ...(!isExamAdmin(req) ? { classId: { $in: req.teacher.classIds } } : {}),
+    ...(!isExamAdmin(req)
+      ? req.teacherAccess
+        ? examAssignmentFilter(req.teacherAccess)
+        : { classId: { $in: req.teacher.classIds } }
+      : {}),
   }).session(transaction);
   if (
     !exam ||
     (!isExamAdmin(req) &&
+      !req.teacherAccess &&
       !exam.subjects.some((subject) =>
         req.teacher.subjectIds.some(
           (id) => String(id) === String(subject.subjectId),
@@ -69,9 +84,23 @@ export function requireExamSubject(req, exam, subjectId) {
     fail(400, "Subject is not configured for this examination.");
   if (
     !isExamAdmin(req) &&
-    !req.teacher.subjectIds.some((id) => String(id) === subjectId)
+    (req.teacherAccess
+      ? !examAssignmentRows(req.teacherAccess, exam, subjectId).length
+      : !req.teacher.subjectIds.some((id) => String(id) === subjectId))
   )
     fail(403, "You are not assigned to this subject.");
+}
+export function requireExamArm(req, exam, subjectId, arm) {
+  requireExamSubject(req, exam, subjectId);
+  if (
+    !isExamAdmin(req) &&
+    req.teacherAccess &&
+    !examAssignmentRows(req.teacherAccess, exam, subjectId, arm).length
+  )
+    fail(
+      403,
+      "This subject, class arm and academic period are not assigned to you.",
+    );
 }
 export function examinationDetails(req, exam) {
   const record = exam.toObject();
@@ -79,11 +108,30 @@ export function examinationDetails(req, exam) {
   delete record.__v;
   record.cohortCount = record.cohortIds.length;
   delete record.cohortIds;
+  if (!isExamAdmin(req) && req.teacherAccess) {
+    record.authorisedArmsBySubject = Object.fromEntries(
+      record.subjects.map((s) => [
+        String(s.subjectId),
+        [
+          ...new Set(
+            examAssignmentRows(
+              req.teacherAccess,
+              exam,
+              String(s.subjectId),
+            ).map((r) => r.arm),
+          ),
+        ],
+      ]),
+    );
+  }
   if (!isExamAdmin(req))
     record.subjects = record.subjects.filter((subject) =>
-      req.teacher.subjectIds.some(
-        (id) => String(id) === String(subject.subjectId),
-      ),
+      req.teacherAccess
+        ? examAssignmentRows(req.teacherAccess, exam, String(subject.subjectId))
+            .length > 0
+        : req.teacher.subjectIds.some(
+            (id) => String(id) === String(subject.subjectId),
+          ),
     );
   return record;
 }
@@ -253,7 +301,7 @@ async function validateArm(schoolId, exam, arm, transaction = null) {
   return schoolClass;
 }
 export async function scoreSheet(req, exam, input) {
-  requireExamSubject(req, exam, input.subjectId);
+  requireExamArm(req, exam, input.subjectId, input.arm);
   await validateArm(req.user.schoolId, exam, input.arm);
   const results = await Result.find({
     schoolId: req.user.schoolId,
@@ -317,7 +365,7 @@ export async function scoreSheet(req, exam, input) {
 export function saveScores(req, id, input) {
   return mutateConfiguration(req.user.schoolId, async (transaction) => {
     const exam = await ownedExam(req, id, transaction);
-    requireExamSubject(req, exam, input.subjectId);
+    requireExamArm(req, exam, input.subjectId, input.arm);
     if (exam.status !== "draft")
       fail(
         409,
@@ -470,7 +518,7 @@ async function transitionResult(req, result, state, reason, transaction) {
 export function submitSubject(req, id, input) {
   return mutateConfiguration(req.user.schoolId, async (transaction) => {
     const exam = await ownedExam(req, id, transaction);
-    requireExamSubject(req, exam, input.subjectId);
+    requireExamArm(req, exam, input.subjectId, input.arm);
     await validateArm(req.user.schoolId, exam, input.arm, transaction);
     if (exam.status !== "draft")
       fail(409, "The examination is no longer accepting subject submissions.");

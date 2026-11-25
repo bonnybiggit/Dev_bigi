@@ -28,47 +28,97 @@ export default function Layout() {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const location = useLocation();
+  const studentWorkspace = user.role === "student";
   const teacherWorkspace = user.role === "teacher";
-  const schoolWorkspace = ["school_admin", "teacher"].includes(user.role);
-  const workspaceBase = teacherWorkspace ? "/teacher" : "/school";
-  const schoolLinks = teacherWorkspace
-    ? [{ path: "", label: "Examinations & Results", icon: GraduationCap }]
-    : [
-        { path: "", label: "Overview", icon: LayoutDashboard },
-        { path: "/profile", label: "School Profile", icon: Settings },
-        { path: "/sessions", label: "Academic Sessions", icon: CalendarDays },
-        { path: "/terms", label: "Terms", icon: CalendarRange },
-        { path: "/subjects", label: "Subjects", icon: Library },
-        { path: "/students", label: "Students & Admissions", icon: Users },
-        {
-          path: "/guardians",
-          label: "Parents & Guardians",
-          icon: ContactRound,
-        },
-        { path: "/staff", label: "Teachers & Staff", icon: GraduationCap },
-        { path: "/classes", label: "Classes", icon: BookOpen },
-        {
-          path: "/attendance/student",
-          label: "Student Attendance",
-          icon: ClipboardCheck,
-        },
-        {
-          path: "/attendance/staff",
-          label: "Staff Attendance",
-          icon: ClipboardCheck,
-        },
-        {
-          path: "/attendance/reports",
-          label: "Attendance Reports",
-          icon: FileBarChart,
-        },
-        { path: "/finance", label: "Fees & Finance", icon: Wallet },
-        {
-          path: "/examinations",
-          label: "Examinations & Results",
-          icon: GraduationCap,
-        },
-      ];
+  const schoolWorkspace = ["school_admin", "teacher", "student"].includes(
+    user.role,
+  );
+  const workspaceBase = studentWorkspace
+    ? "/student"
+    : teacherWorkspace
+      ? "/teacher"
+      : "/school";
+  const schoolLinks = studentWorkspace
+    ? [
+        ["dashboard", "Overview"],
+        ["profile", "My Profile"],
+        ["subjects", "My Subjects"],
+        ["attendance", "My Attendance"],
+        ["results", "Examinations & Results"],
+        ["report-cards", "Report Cards"],
+        ["fees", "School Fees"],
+        ["timetable", "Timetable"],
+        ["assignments", "Assignments & Homework"],
+        ["announcements", "Announcements"],
+        ["settings", "Settings"],
+      ].map(([path, label]) => ({ path: "/" + path, label, icon: BookOpen }))
+    : teacherWorkspace
+      ? [
+          { path: "", label: "Overview", icon: LayoutDashboard },
+          ...[
+            ["classes", "My Classes"],
+            ["subjects", "My Subjects"],
+            ["students", "My Students"],
+            ["attendance", "Attendance"],
+            ["examinations", "Examinations & Results"],
+            ["timetable", "Timetable"],
+            ["assignments", "Assignments & Homework"],
+            ["announcements", "Announcements"],
+            ["profile", "My Profile"],
+            ["settings", "Settings"],
+          ].map(([path, label]) => ({
+            path: "/" + path,
+            label,
+            icon: BookOpen,
+          })),
+        ]
+      : [
+          { path: "", label: "Overview", icon: LayoutDashboard },
+          { path: "/profile", label: "School Profile", icon: Settings },
+          { path: "/sessions", label: "Academic Sessions", icon: CalendarDays },
+          { path: "/terms", label: "Terms", icon: CalendarRange },
+          { path: "/subjects", label: "Subjects", icon: Library },
+          { path: "/students", label: "Students & Admissions", icon: Users },
+          {
+            path: "/applications",
+            label: "Admission Applications",
+            icon: ClipboardCheck,
+          },
+          { path: "/forms", label: "Forms & Documents", icon: BookOpen },
+          {
+            path: "/guardians",
+            label: "Parents & Guardians",
+            icon: ContactRound,
+          },
+          { path: "/staff", label: "Teachers & Staff", icon: GraduationCap },
+          {
+            path: "/teacher-assignments",
+            label: "Teacher Assignments",
+            icon: BookOpen,
+          },
+          { path: "/classes", label: "Classes", icon: BookOpen },
+          {
+            path: "/attendance/student",
+            label: "Student Attendance",
+            icon: ClipboardCheck,
+          },
+          {
+            path: "/attendance/staff",
+            label: "Staff Attendance",
+            icon: ClipboardCheck,
+          },
+          {
+            path: "/attendance/reports",
+            label: "Attendance Reports",
+            icon: FileBarChart,
+          },
+          { path: "/finance", label: "Fees & Finance", icon: Wallet },
+          {
+            path: "/examinations",
+            label: "Examinations & Results",
+            icon: GraduationCap,
+          },
+        ];
   async function signOut() {
     setBusy(true);
     try {
@@ -98,11 +148,13 @@ export default function Layout() {
           <X />
         </button>
         <div className="workspace-label">
-          {teacherWorkspace
-            ? "TEACHER WORKSPACE"
-            : schoolWorkspace
-              ? "SCHOOL WORKSPACE"
-              : "PLATFORM WORKSPACE"}
+          {studentWorkspace
+            ? "STUDENT PORTAL"
+            : teacherWorkspace
+              ? "TEACHER WORKSPACE"
+              : schoolWorkspace
+                ? "SCHOOL WORKSPACE"
+                : "PLATFORM WORKSPACE"}
         </div>
         <nav aria-label="Main navigation">
           {schoolWorkspace ? (
@@ -110,12 +162,13 @@ export default function Layout() {
               <NavLink
                 key={path}
                 end={
-                  !teacherWorkspace &&
                   ![
                     "/students",
                     "/guardians",
                     "/finance",
                     "/examinations",
+                    "/report-cards",
+                    "/fees",
                   ].includes(path)
                 }
                 to={`${workspaceBase}${path}`}
@@ -142,11 +195,13 @@ export default function Layout() {
           <div className="access-card">
             <ShieldCheck size={22} />
             <strong>
-              {teacherWorkspace
-                ? "Teaching staff access"
-                : schoolWorkspace
-                  ? "School Administrator"
-                  : "Super Admin access"}
+              {studentWorkspace
+                ? "Student access"
+                : teacherWorkspace
+                  ? "Teaching staff access"
+                  : schoolWorkspace
+                    ? "School Administrator"
+                    : "Super Admin access"}
             </strong>
             <p>Your central workspace for school operations.</p>
           </div>
@@ -179,8 +234,12 @@ export default function Layout() {
             <span>Workspace</span>
             <span className="slash">/</span>
             <strong>
-              {teacherWorkspace
-                ? "Examinations & Results"
+              {studentWorkspace || teacherWorkspace
+                ? schoolLinks.find(
+                    (link) =>
+                      `${workspaceBase}${link.path}` === location.pathname,
+                  )?.label ||
+                  (studentWorkspace ? "Student portal" : "Teacher workspace")
                 : schoolWorkspace
                   ? schoolLinks.find(
                       (link) =>
@@ -202,11 +261,13 @@ export default function Layout() {
             <div className="account-text">
               <strong>{user.name}</strong>
               <span>
-                {teacherWorkspace
-                  ? "Teacher"
-                  : schoolWorkspace
-                    ? "School Administrator"
-                    : "Super Administrator"}
+                {studentWorkspace
+                  ? "Student"
+                  : teacherWorkspace
+                    ? "Teacher"
+                    : schoolWorkspace
+                      ? "School Administrator"
+                      : "Super Administrator"}
               </span>
             </div>
             <span className="avatar">

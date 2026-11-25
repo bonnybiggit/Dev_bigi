@@ -9,13 +9,15 @@ import { schoolRoutes } from "./routes/schools.js";
 import { schoolWorkspaceRoutes } from "./routes/schoolWorkspace.js";
 import { ConfigurationError } from "./services/schoolConfiguration.js";
 import { examinationRoutes } from "./routes/examinations.js";
+import { teacherRoutes } from "./routes/teacher.js";
+import { studentPortalRoutes } from "./routes/studentPortal.js";
 export function createApp(config) {
   const app = express();
   app.disable("x-powered-by");
   app.use(
     helmet(),
     cors({ origin: config.FRONTEND_ORIGIN, credentials: true }),
-    express.json({ limit: "16kb" }),
+    express.json({ limit: "64kb" }),
     cookieParser(),
   );
   app.use("/api", (req, res, next) => {
@@ -35,6 +37,8 @@ export function createApp(config) {
     });
   });
   app.use("/api/auth", authRoutes(config));
+  app.use("/api/teacher", teacherRoutes(config));
+  app.use("/api/student", studentPortalRoutes(config));
   app.use("/api/schools", schoolRoutes(config));
   app.use("/api/school/examinations", examinationRoutes(config));
   app.use("/api/school", schoolWorkspaceRoutes(config));

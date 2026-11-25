@@ -1,4 +1,8 @@
 import { Router } from "express";
+import { AdmissionApplication } from "../models/Admissions.js";
+import { Guardian } from "../models/Guardian.js";
+import { StudentGuardian } from "../models/StudentGuardian.js";
+import { User } from "../models/User.js";
 import { z } from "zod";
 import { Student } from "../models/Student.js";
 import { AcademicSession } from "../models/AcademicSession.js";
@@ -50,12 +54,40 @@ export function studentRoutes() {
       if (input[field]) filter[field] = input[field];
     if (input.search) {
       const pattern = escape(input.search);
+      const guardians = await Guardian.find({
+        schoolId,
+        $or: ["fullName", "primaryPhone", "alternativePhone"].map((k) => ({
+          [k]: { $regex: pattern, $options: "i" },
+        })),
+      }).select("_id");
+      const links = await StudentGuardian.find({
+        schoolId,
+        guardianId: { $in: guardians.map((g) => g._id) },
+        isActive: true,
+      }).select("studentId");
+      const applications = await AdmissionApplication.find({
+        schoolId,
+        $or: [
+          { reference: { $regex: pattern, $options: "i" } },
+          { "guardians.fullName": { $regex: pattern, $options: "i" } },
+          { "guardians.primaryPhone": { $regex: pattern, $options: "i" } },
+        ],
+      }).select("studentId");
       filter.$or = [
         "firstName",
         "middleName",
         "lastName",
         "admissionNumber",
+        "applicationReference",
       ].map((field) => ({ [field]: { $regex: pattern, $options: "i" } }));
+      filter.$or.push({
+        _id: {
+          $in: [
+            ...links.map((l) => l.studentId),
+            ...applications.map((a) => a.studentId).filter(Boolean),
+          ],
+        },
+      });
       filter.$or.push({
         $expr: {
           $regexMatch: {
@@ -76,6 +108,13 @@ export function studentRoutes() {
           },
         },
       });
+    }
+    if (input.applicationStatus) {
+      const applications = await AdmissionApplication.find({
+        schoolId,
+        status: input.applicationStatus,
+      }).select("_id");
+      filter.applicationId = { $in: applications.map((a) => a._id) };
     }
     const [records, total] = await Promise.all([
       Student.find(filter)
@@ -171,6 +210,15 @@ export function studentRoutes() {
         if (status === "active")
           await validatePlacement(record, req.user.schoolId, transaction);
         record.status = status;
+        await User.updateMany(
+          {
+            schoolId: req.user.schoolId,
+            studentId: record._id,
+            role: "student",
+          },
+          { $inc: { sessionVersion: 1 } },
+          { session: transaction },
+        );
         record.updatedBy = req.user._id;
         return record.save({ session: transaction });
       },

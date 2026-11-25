@@ -91,11 +91,19 @@ export default function StaffForm({
           {values.category === "teaching" && (
             <section className="staff-assignments">
               <h3>Teaching assignments</h3>
+              {record?.assignmentMode === "explicit" && (
+                <p>
+                  Legacy arrays are retained read-only.{" "}
+                  <Link to="/school/teacher-assignments">
+                    Manage period-aware assignments
+                  </Link>
+                </p>
+              )}
               <p className="field-help">
                 Optional. Choose classes, then subjects from those classes.
                 Existing inactive assignments are retained until removed.
               </p>
-              <fieldset>
+              <fieldset disabled={record?.assignmentMode === "explicit"}>
                 <legend>Assigned classes</legend>
                 {!classes.length ? (
                   <p className="muted">

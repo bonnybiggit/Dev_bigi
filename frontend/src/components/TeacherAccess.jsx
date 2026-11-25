@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { api } from "../lib/api";
 import { configurationError } from "../lib/academicConfiguration";
 export default function TeacherAccess({ staff }) {
@@ -36,9 +37,78 @@ export default function TeacherAccess({ staff }) {
       setBusy(false);
     }
   }
+  const [grants, setGrants] = useState(staff.attendanceGrants || []);
+  const [classes, setClasses] = useState([]);
+  const [saved, setSaved] = useState("");
+  useEffect(() => {
+    api
+      .get("/school/classes")
+      .then(({ data }) => setClasses(data.records || []))
+      .catch((e) => setError(configurationError(e)));
+  }, []);
+  async function saveGrants() {
+    setBusy(true);
+    setError("");
+    setSaved("");
+    try {
+      await api.put("/school/staff/" + staff._id + "/attendance-grants", {
+        grants: grants.map(({ classId, arm }) => ({ classId, arm })),
+      });
+      setSaved("Permissions saved. Teacher must sign in again.");
+    } catch (e) {
+      setError(configurationError(e));
+    } finally {
+      setBusy(false);
+    }
+  }
   return (
     <section className="administrator-section">
-      <h2>Teacher score-entry access</h2>
+      <h2>Teacher workspace access</h2>
+      {staff.assignmentMode === "explicit" && (
+        <p>
+          <Link to="/school/teacher-assignments">
+            Manage period-scoped attendance permissions in Teacher Assignments
+          </Link>
+        </p>
+      )}
+      <fieldset disabled={busy || staff.assignmentMode === "explicit"}>
+        <legend>Attendance permissions</legend>
+        <p>Authorise each class and arm explicitly.</p>
+        {classes
+          .filter((c) =>
+            staff.classIds.some((id) => String(id) === String(c._id)),
+          )
+          .flatMap((c) =>
+            (c.arms.length ? c.arms : [""]).map((arm) => (
+              <label key={c._id + arm}>
+                <input
+                  type="checkbox"
+                  checked={grants.some(
+                    (g) => String(g.classId) === String(c._id) && g.arm === arm,
+                  )}
+                  onChange={(e) =>
+                    setGrants((old) =>
+                      e.target.checked
+                        ? [...old, { classId: c._id, arm }]
+                        : old.filter(
+                            (g) =>
+                              !(
+                                String(g.classId) === String(c._id) &&
+                                g.arm === arm
+                              ),
+                          ),
+                    )
+                  }
+                />
+                {c.name} {arm}
+              </label>
+            )),
+          )}
+        <button type="button" className="btn secondary" onClick={saveGrants}>
+          Save attendance permissions
+        </button>
+        {saved && <p role="status">{saved}</p>}
+      </fieldset>
       <p className="field-help">
         Access uses this staff record's email and current class/subject
         assignments. Deactivation or changes to the staff profile invalidate

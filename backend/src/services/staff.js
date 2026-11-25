@@ -69,8 +69,21 @@ export function saveStaff({ schoolId, userId, id, input }) {
         409,
         "This employee ID is already used in your school, including inactive records.",
       );
-    await validateAssignments(input, existing, schoolId, session);
+    if (existing?.assignmentMode !== "explicit")
+      await validateAssignments(input, existing, schoolId, session);
     if (existing) {
+      if (
+        existing.assignmentMode === "explicit" &&
+        ["classIds", "subjectIds"].some(
+          (field) =>
+            existing[field].map(String).sort().join() !==
+            [...input[field]].sort().join(),
+        )
+      )
+        fail(
+          409,
+          "This teacher uses period-aware assignments. Manage assignments on the Teacher Assignments page; legacy arrays are retained read-only.",
+        );
       await User.updateMany(
         { schoolId, staffId: existing._id, role: "teacher" },
         { $inc: { sessionVersion: 1 } },

@@ -8,6 +8,7 @@ import { createApp } from "../src/app.js";
 import { User } from "../src/models/User.js";
 import { School } from "../src/models/School.js";
 import { Staff } from "../src/models/Staff.js";
+import { TeacherAudit } from "../src/models/TeacherAudit.js";
 import { Student } from "../src/models/Student.js";
 import { AcademicSession } from "../src/models/AcademicSession.js";
 import { AcademicTerm } from "../src/models/AcademicTerm.js";
@@ -132,7 +133,10 @@ async function state(target, reason = "") {
 }
 before(
   async () => {
-    mongo = await MongoMemoryReplSet.create({ replSet: { count: 1 } });
+    mongo = await MongoMemoryReplSet.create({
+      replSet: { count: 1 },
+      instanceOpts: [{ launchTimeout: 60000 }],
+    });
     await mongoose.connect(mongo.getUri());
     await Promise.all(
       [
@@ -979,6 +983,292 @@ test("search/filter/pagination, tenant isolation and result/report-card endpoint
     assert.equal((await client.get("/api/school/examinations")).status, status);
     assert.equal((await write("post", "", input(), client)).status, status);
   }
+});
+
+test("Milestone 8 teacher dashboard, class-scoped subjects and restricted paginated students", async () => {
+  assert.equal((await request(app).get("/api/teacher/dashboard")).status, 401);
+  assert.equal((await agent.get("/api/teacher/dashboard")).status, 403);
+  const context = await teacherAgent.get("/api/teacher/context");
+  assert.equal(context.status, 200);
+  assert.deepEqual(
+    context.body.classes.map((c) => c._id),
+    [schoolClass.id],
+  );
+  assert.deepEqual(
+    context.body.subjects.map((s) => s._id),
+    [maths.id],
+  );
+  assert.equal(context.body.subjects[0].classId, schoolClass.id);
+  const dashboard = await teacherAgent.get("/api/teacher/dashboard");
+  assert.equal(dashboard.status, 200);
+  assert.equal(
+    dashboard.body.stats.students,
+    await Student.countDocuments({
+      schoolId: school._id,
+      classId: schoolClass._id,
+      status: "active",
+    }),
+  );
+  assert.equal(dashboard.body.stats.classes, 1);
+  assert.equal(dashboard.body.stats.subjects, 1);
+  const directory = await teacherAgent
+    .get("/api/teacher/students")
+    .query({ limit: 1 });
+  assert.equal(directory.status, 200);
+  assert.equal(directory.body.records.length, 1);
+  assert.equal(directory.body.total, 4);
+  assert.equal(directory.body.records[0].address, undefined);
+  assert.equal(directory.body.records[0].dateOfBirth, undefined);
+  const search = await teacherAgent
+    .get("/api/teacher/students")
+    .query({ search: "Alice" });
+  assert.equal(search.body.total, 1);
+  assert.equal(
+    (
+      await teacherAgent
+        .get("/api/teacher/students")
+        .query({ classId: otherClass.id })
+    ).status,
+    403,
+  );
+  assert.equal(
+    (await teacherAgent.get("/api/teacher/students/" + foreignStudent.id))
+      .status,
+    404,
+  );
+  const own = await teacherAgent.get("/api/teacher/students/" + students[0].id);
+  assert.equal(own.status, 200);
+  assert.equal(own.body.record.address, undefined);
+  assert.equal(
+    (await teacherAgent.get("/api/teacher/students").query({ search: ".*" }))
+      .body.total,
+    0,
+  );
+  assert.equal(
+    (await send(teacherAgent, "post", "/api/teacher/students", {})).status,
+    404,
+  );
+});
+
+test("Milestone 8 teachers update only personal phone and mutations require trusted origin", async () => {
+  const path = "/api/teacher/profile";
+  assert.equal(
+    (await teacherAgent.get(path)).body.record.employeeId,
+    staff.employeeId,
+  );
+  assert.equal(
+    (
+      await send(teacherAgent, "patch", path, {
+        phone: "+234 801 111 2222",
+        role: "school_admin",
+      })
+    ).status,
+    400,
+  );
+  assert.equal(
+    (await teacherAgent.patch(path).send({ phone: "+234 801 111 2222" }))
+      .status,
+    403,
+  );
+  assert.equal(
+    (await send(teacherAgent, "patch", path, { phone: "+234 801 111 2222" }))
+      .status,
+    200,
+  );
+  assert.equal((await Staff.findById(staff._id)).phone, "+234 801 111 2222");
+  assert.equal(
+    (await User.findById(teacherUser.id)).phone,
+    "+234 801 111 2222",
+  );
+});
+
+test("Milestone 8 explicit attendance grants, session revocation, corrections and duplicate protection", async () => {
+  const placement = {
+    sessionId: session.id,
+    classId: schoolClass.id,
+    arm: "A",
+    date: "2026-09-15",
+  };
+  const path = "/api/teacher/attendance/student";
+  assert.equal(
+    (await teacherAgent.get(path + "/roster").query(placement)).status,
+    403,
+  );
+  const grantPath = "/api/school/staff/" + staff.id + "/attendance-grants";
+  assert.equal(
+    (await send(teacherAgent, "put", grantPath, { grants: [] })).status,
+    403,
+  );
+  assert.equal(
+    (
+      await send(agent, "put", grantPath, {
+        grants: [{ classId: otherClass.id, arm: "A" }],
+      })
+    ).status,
+    400,
+  );
+  assert.equal(
+    (
+      await send(agent, "put", grantPath, {
+        grants: [{ classId: schoolClass.id, arm: "A" }],
+      })
+    ).status,
+    200,
+  );
+  assert.equal((await teacherAgent.get("/api/teacher/context")).status, 401);
+  assert.equal(
+    (
+      await send(teacherAgent, "post", "/api/auth/teacher-login", {
+        email: staff.email,
+        password: "Teacher-password-123!",
+      })
+    ).status,
+    200,
+  );
+  const roster = await teacherAgent.get(path + "/roster").query(placement);
+  assert.equal(roster.status, 200);
+  assert.equal(
+    (await teacherAgent.get(path + "/roster").query({ ...placement, arm: "B" }))
+      .status,
+    403,
+  );
+  assert.equal(
+    (
+      await teacherAgent
+        .get("/api/teacher/attendance/staff/roster")
+        .query(placement)
+    ).status,
+    403,
+  );
+  const entry = { personId: students[0].id, status: "present", revision: 0 };
+  assert.equal(
+    (await send(teacherAgent, "put", path, { ...placement, entries: [entry] }))
+      .status,
+    200,
+  );
+  assert.equal(
+    (await send(teacherAgent, "put", path, { ...placement, entries: [entry] }))
+      .status,
+    409,
+  );
+  assert.equal(
+    await Attendance.countDocuments({
+      schoolId: school._id,
+      personId: students[0]._id,
+      date: new Date(placement.date),
+    }),
+    1,
+  );
+  const record = await Attendance.findOne({
+    schoolId: school._id,
+    personId: students[0]._id,
+    date: new Date(placement.date),
+  });
+  const correction = {
+    ...placement,
+    entries: [{ ...entry, status: "late", revision: record.revision }],
+  };
+  assert.equal((await send(teacherAgent, "put", path, correction)).status, 400);
+  assert.equal(
+    (
+      await send(teacherAgent, "put", path, {
+        ...correction,
+        correctionReason: "Arrival time confirmed",
+      })
+    ).status,
+    200,
+  );
+  const audit = await teacherAgent.get(
+    "/api/teacher/attendance/records/" + record.id + "/audit",
+  );
+  assert.equal(audit.status, 200);
+  assert.equal(audit.body.total, 2);
+  assert.equal(audit.body.records[0].reason, "Arrival time confirmed");
+  assert.equal(
+    (
+      await send(teacherAgent, "put", path, {
+        ...placement,
+        entries: [
+          { personId: students[1].id, status: "present", revision: 0 },
+          { personId: foreignStudent.id, status: "absent", revision: 0 },
+        ],
+      })
+    ).status,
+    400,
+  );
+  assert.equal(
+    await Attendance.countDocuments({
+      schoolId: school._id,
+      personId: students[1]._id,
+      date: new Date(placement.date),
+    }),
+    0,
+  );
+  assert.equal(
+    (
+      await send(teacherAgent, "put", path, {
+        ...placement,
+        entries: students
+          .slice(1)
+          .map((s) => ({ personId: s.id, status: "present", revision: 0 })),
+      })
+    ).status,
+    200,
+  );
+  assert.equal(
+    await TeacherAudit.countDocuments({
+      schoolId: school._id,
+      staffId: staff._id,
+      action: "attendance_grants_updated",
+    }),
+    1,
+  );
+  assert.equal(
+    await TeacherAudit.countDocuments({
+      schoolId: school._id,
+      staffId: staff._id,
+      action: "contact_updated",
+    }),
+    1,
+  );
+  const report = await teacherAgent
+    .get("/api/teacher/attendance/reports")
+    .query({ ...placement, kind: "student" });
+  assert.equal(report.status, 200);
+  assert.equal(report.body.summary.late, 1);
+  assert.equal(
+    (
+      await teacherAgent
+        .get("/api/teacher/attendance/reports")
+        .query({ date: placement.date, kind: "student" })
+    ).status,
+    403,
+  );
+  assert.equal(
+    (await send(agent, "put", grantPath, { grants: [] })).status,
+    200,
+  );
+  await send(teacherAgent, "post", "/api/auth/teacher-login", {
+    email: staff.email,
+    password: "Teacher-password-123!",
+  });
+  assert.equal(
+    (
+      await teacherAgent.get(
+        "/api/teacher/attendance/records/" + record.id + "/audit",
+      )
+    ).status,
+    403,
+  );
+});
+
+test("Milestone 8 inactive staff and suspended schools reject existing teacher sessions", async () => {
+  await School.updateOne({ _id: school._id }, { status: "suspended" });
+  assert.equal((await teacherAgent.get("/api/teacher/dashboard")).status, 403);
+  await School.updateOne({ _id: school._id }, { status: "active" });
+  await Staff.updateOne({ _id: staff._id }, { status: "inactive" });
+  assert.equal((await teacherAgent.get("/api/teacher/dashboard")).status, 403);
+  await Staff.updateOne({ _id: staff._id }, { status: "active" });
 });
 
 test("teacher session/assignment revocation and staff deactivation immediately restrict score access", async () => {

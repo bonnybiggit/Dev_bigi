@@ -25,13 +25,16 @@ export function AuthProvider({ children }) {
     credentials,
     schoolLogin = false,
     teacherLogin = false,
+    studentLogin = false,
   ) => {
     const { data } = await api.post(
-      teacherLogin
-        ? "/auth/teacher-login"
-        : schoolLogin
-          ? "/auth/school-login"
-          : "/auth/login",
+      studentLogin
+        ? "/auth/student-login"
+        : teacherLogin
+          ? "/auth/teacher-login"
+          : schoolLogin
+            ? "/auth/school-login"
+            : "/auth/login",
       credentials,
     );
     setUser(data.user);

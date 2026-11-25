@@ -1,5 +1,15 @@
 import { Navigate, Route, Routes, Outlet } from "react-router-dom";
 import { useAuth } from "./context/AuthContext";
+import AdmissionApplications from "./pages/AdmissionApplications";
+import AdmissionApplicationDetail from "./pages/AdmissionApplicationDetail";
+import FormsDocuments from "./pages/FormsDocuments";
+import RegistrationFormPreview from "./pages/RegistrationFormPreview";
+import TeacherAssignments from "./pages/TeacherAssignments";
+import TeacherWorkspace from "./pages/TeacherWorkspace";
+import TeacherAttendance from "./pages/TeacherAttendance";
+import ComingSoon from "./pages/ComingSoon";
+import StudentLogin from "./pages/StudentLogin";
+import StudentPortal from "./pages/StudentPortal";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Schools from "./pages/Schools";
@@ -32,7 +42,16 @@ function Protected({ role, passwordPage = false }) {
     return <div className="screen-loading">Opening your workspace…</div>;
   if (!user)
     return (
-      <Navigate to={role === "teacher" ? "/teacher-login" : "/login"} replace />
+      <Navigate
+        to={
+          role === "student"
+            ? "/student-login"
+            : role === "teacher"
+              ? "/teacher-login"
+              : "/login"
+        }
+        replace
+      />
     );
   if (user.mustChangePassword && !passwordPage)
     return <Navigate to="/change-password" replace />;
@@ -47,9 +66,15 @@ export default function App() {
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/school-login" element={<Login schoolLogin />} />
+      <Route path="/student-login" element={<StudentLogin />} />
       <Route path="/teacher-login" element={<Login teacherLogin />} />
       <Route
-        element={<Protected role={["school_admin", "teacher"]} passwordPage />}
+        element={
+          <Protected
+            role={["school_admin", "teacher", "student"]}
+            passwordPage
+          />
+        }
       >
         <Route path="/change-password" element={<ChangePassword />} />
       </Route>
@@ -64,7 +89,19 @@ export default function App() {
         <Route path="school" element={<Layout />}>
           <Route index element={<SchoolDashboard />} />
           <Route path="staff" element={<StaffManagement />} />
+          <Route path="teacher-assignments" element={<TeacherAssignments />} />
           <Route path="students" element={<StudentManagement />} />
+          <Route path="applications" element={<AdmissionApplications />} />
+          <Route
+            path="applications/:id"
+            element={<AdmissionApplicationDetail />}
+          />
+          <Route path="forms" element={<FormsDocuments />} />
+          <Route
+            path="forms/templates/:type"
+            element={<RegistrationFormPreview generic />}
+          />
+          <Route path="documents/:id" element={<RegistrationFormPreview />} />
           <Route path="students/:id" element={<StudentProfile />} />
           <Route path="guardians" element={<GuardianManagement />} />
           <Route path="guardians/:id" element={<GuardianProfile />} />
@@ -128,9 +165,83 @@ export default function App() {
           </Route>
         </Route>
       </Route>
+      <Route element={<Protected role="student" />}>
+        <Route path="student" element={<Layout />}>
+          <Route index element={<Navigate to="/student/dashboard" replace />} />
+          {[
+            "dashboard",
+            "profile",
+            "subjects",
+            "attendance",
+            "results",
+            "report-cards",
+            "fees",
+            "settings",
+          ].map((mode) => (
+            <Route
+              key={mode}
+              path={mode}
+              element={<StudentPortal key={mode} mode={mode} />}
+            />
+          ))}
+          <Route
+            path="report-cards/:cardId"
+            element={<StudentReportCard portal />}
+          />
+          <Route
+            path="fees/receipts/:id"
+            element={<StudentPortal mode="receipt" />}
+          />
+          {["timetable", "assignments", "announcements"].map((module) => (
+            <Route
+              key={module}
+              path={module}
+              element={
+                <ComingSoon
+                  module={
+                    module === "assignments" ? "Assignments & Homework" : module
+                  }
+                />
+              }
+            />
+          ))}
+        </Route>
+      </Route>
       <Route element={<Protected role="teacher" />}>
         <Route path="teacher" element={<Layout />}>
-          <Route index element={<Examinations />} />
+          <Route
+            index
+            element={<TeacherWorkspace key="overview" mode="overview" />}
+          />
+          <Route path="examinations" element={<Examinations />} />
+          <Route path="attendance" element={<TeacherAttendance />} />
+          {["classes", "subjects", "students", "profile", "settings"].map(
+            (mode) => (
+              <Route
+                key={mode}
+                path={mode}
+                element={<TeacherWorkspace key={mode} mode={mode} />}
+              />
+            ),
+          )}
+          <Route
+            path="students/:id"
+            element={<TeacherWorkspace key="student" mode="student" />}
+          />
+          {["timetable", "assignments", "announcements"].map((module) => (
+            <Route
+              key={module}
+              path={module}
+              element={
+                <ComingSoon
+                  module={
+                    module === "assignments" ? "Assignments & Homework" : module
+                  }
+                />
+              }
+            />
+          ))}
+
           <Route path="examinations/:id" element={<ExaminationWorkspace />} />
         </Route>
       </Route>

@@ -1,6 +1,12 @@
 import mongoose from "mongoose";
 const schema = new mongoose.Schema(
   {
+    applicationId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "AdmissionApplication",
+      immutable: true,
+    },
+    applicationReference: { type: String, immutable: true, maxlength: 80 },
     schoolId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "School",
@@ -65,4 +71,12 @@ schema.index(
   { unique: true, collation: { locale: "en", strength: 2 } },
 );
 schema.index({ schoolId: 1, sessionId: 1, classId: 1, arm: 1, status: 1 });
+schema.index(
+  { schoolId: 1, applicationId: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { applicationId: { $type: "objectId" } },
+  },
+);
+schema.index({ schoolId: 1, applicationReference: 1 });
 export const Student = mongoose.model("Student", schema);

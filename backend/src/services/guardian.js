@@ -17,8 +17,14 @@ export async function ownedGuardian(schoolId, id, session = null) {
   if (!record) fail(404, "Guardian record not found.");
   return record;
 }
-export function saveGuardian({ schoolId, userId, id, input }) {
-  return mutateConfiguration(schoolId, async (session) => {
+export function saveGuardian({
+  schoolId,
+  userId,
+  id,
+  input,
+  transaction = null,
+}) {
+  const operation = async (session) => {
     if (id) {
       const record = await ownedGuardian(schoolId, id, session);
       Object.assign(record, input, { updatedBy: userId });
@@ -30,7 +36,10 @@ export function saveGuardian({ schoolId, userId, id, input }) {
         { session },
       )
     )[0];
-  });
+  };
+  return transaction
+    ? operation(transaction)
+    : mutateConfiguration(schoolId, operation);
 }
 export function changeRelationship({
   schoolId,
@@ -39,8 +48,9 @@ export function changeRelationship({
   studentId,
   relationship,
   operation,
+  transaction = null,
 }) {
-  return mutateConfiguration(schoolId, async (session) => {
+  const run = async (session) => {
     const guardian = await ownedGuardian(schoolId, guardianId, session);
     const student = await ownedStudent(schoolId, studentId, session);
     const existing = await StudentGuardian.findOne({
@@ -87,7 +97,8 @@ export function changeRelationship({
         { session },
       )
     )[0];
-  });
+  };
+  return transaction ? run(transaction) : mutateConfiguration(schoolId, run);
 }
 export const relationshipDetails = (record) => ({
   studentId: record.studentId,

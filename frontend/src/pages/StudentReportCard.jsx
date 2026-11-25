@@ -4,8 +4,8 @@ import { Printer } from "lucide-react";
 import { api } from "../lib/api";
 import { configurationError } from "../lib/academicConfiguration";
 import { markText } from "../lib/examinations";
-export default function StudentReportCard() {
-  const { id, studentId } = useParams();
+export default function StudentReportCard({ portal = false }) {
+  const { id, studentId, cardId } = useParams();
   const [publication, setPublication] = useState(""),
     [data, setData] = useState(null),
     [error, setError] = useState("");
@@ -14,14 +14,16 @@ export default function StudentReportCard() {
     setData(null);
     try {
       const { data } = await api.get(
-        `/school/examinations/${id}/report-cards/${studentId}`,
-        { params: publication ? { publication } : {} },
+        portal
+          ? `/student/report-cards/${cardId}`
+          : `/school/examinations/${id}/report-cards/${studentId}`,
+        { params: !portal && publication ? { publication } : {} },
       );
       setData(data);
     } catch (e) {
       setError(configurationError(e));
     }
-  }, [id, studentId, publication]);
+  }, [id, studentId, publication, portal, cardId]);
   useEffect(() => {
     load();
   }, [load]);
@@ -33,8 +35,13 @@ export default function StudentReportCard() {
           <div className="eyebrow">PUBLISHED REPORT CARD</div>
           <h1>Student report card</h1>
           <p>
-            <Link className="text-link" to={`/school/examinations/${id}`}>
-              Return to examination
+            <Link
+              className="text-link"
+              to={
+                portal ? "/student/report-cards" : `/school/examinations/${id}`
+              }
+            >
+              {portal ? "Return to my report cards" : "Return to examination"}
             </Link>
           </p>
         </div>
@@ -54,32 +61,37 @@ export default function StudentReportCard() {
         <div className="loading-state">Loading published report card…</div>
       ) : (
         <>
-          <div className="attendance-filter-panel panel no-print">
-            <label htmlFor="report-publication">
-              Publication revision
-              <select
-                id="report-publication"
-                value={publication}
-                onChange={(event) => setPublication(event.target.value)}
-              >
-                <option value="">Latest publication</option>
-                {data.publications.map((item) => (
-                  <option key={item.publication} value={item.publication}>
-                    Publication {item.publication} ·{" "}
-                    {new Date(item.createdAt).toLocaleDateString("en-GB")}
-                  </option>
-                ))}
-              </select>
-            </label>
-            {data.currentState !== "published" && (
-              <p className="field-help">
-                The examination is currently {data.currentState}. This is a
-                retained previous publication.
-              </p>
-            )}
-          </div>
+          {!portal && (
+            <div className="attendance-filter-panel panel no-print">
+              <label htmlFor="report-publication">
+                Publication revision
+                <select
+                  id="report-publication"
+                  value={publication}
+                  onChange={(event) => setPublication(event.target.value)}
+                >
+                  <option value="">Latest publication</option>
+                  {data.publications.map((item) => (
+                    <option key={item.publication} value={item.publication}>
+                      Publication {item.publication} ·{" "}
+                      {new Date(item.createdAt).toLocaleDateString("en-GB")}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {data.currentState !== "published" && (
+                <p className="field-help">
+                  The examination is currently {data.currentState}. This is a
+                  retained previous publication.
+                </p>
+              )}
+            </div>
+          )}
           <article className="student-report-card">
             <header>
+              {portal && data.school?.logoUrl && (
+                <img src={data.school.logoUrl} alt="School logo" width="72" />
+              )}
               <h2>{card.school.name}</h2>
               <p>
                 {[card.school.address, card.school.city, card.school.country]
@@ -180,7 +192,10 @@ export default function StudentReportCard() {
               </p>
             </section>
             <footer>
-              Published by {data.card.publishedByName} ·{" "}
+              {portal
+                ? "Published"
+                : `Published by ${data.card.publishedByName}`}{" "}
+              ·{" "}
               {new Date(data.card.createdAt).toLocaleString("en-GB", {
                 timeZone: "Africa/Lagos",
               })}{" "}

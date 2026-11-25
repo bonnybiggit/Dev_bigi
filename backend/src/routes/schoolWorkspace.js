@@ -8,6 +8,11 @@ import { guardianRoutes } from "./guardians.js";
 import { attendanceRoutes } from "./attendance.js";
 import { financeRoutes } from "./finance.js";
 import { teacherAccountRoutes } from "./teacherAccounts.js";
+import { teacherAssignmentRoutes } from "./teacherAssignments.js";
+import { admissionsRoutes } from "./admissions.js";
+import { studentAccountRoutes } from "./studentAccounts.js";
+import { StudentPortalAudit } from "../models/StudentPortalAudit.js";
+import { mutateConfiguration } from "../services/schoolConfiguration.js";
 import {
   authenticate,
   requireRole,
@@ -62,6 +67,34 @@ export function schoolWorkspaceRoutes(config) {
     res.json({ administrator: publicUser(user) });
   });
   router.use("/staff", teacherAccountRoutes());
+  router.use("/teacher-assignments", teacherAssignmentRoutes());
+  router.use(admissionsRoutes());
+  router.get("/student-portal-settings", (req, res) =>
+    res.json({ enabled: req.school.studentFinanceEnabled === true }),
+  );
+  router.put("/student-portal-settings", async (req, res) => {
+    const { enabled } = z
+      .object({ enabled: z.boolean() })
+      .strict()
+      .parse(req.body);
+    await mutateConfiguration(req.user.schoolId, async (session) => {
+      req.school.studentFinanceEnabled = enabled;
+      await req.school.save({ session });
+      await StudentPortalAudit.create(
+        [
+          {
+            schoolId: req.user.schoolId,
+            actorId: req.user._id,
+            action: "finance_visibility",
+            details: { enabled },
+          },
+        ],
+        { session },
+      );
+    });
+    res.json({ enabled });
+  });
+  router.use("/students", studentAccountRoutes());
   router.use("/staff", staffRoutes());
   router.use("/students", studentRoutes());
   router.use("/guardians", guardianRoutes());

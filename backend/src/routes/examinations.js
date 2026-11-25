@@ -1,3 +1,4 @@
+import { examAssignmentFilter } from "../services/teacherAccess.js";
 import { Router } from "express";
 import { z } from "zod";
 import { Examination } from "../models/Examination.js";
@@ -30,7 +31,7 @@ import {
   ownedExam,
   examinationDetails,
   isExamAdmin,
-  requireExamSubject,
+  requireExamArm,
   resultFields,
   saveExamination,
   scoreSheet,
@@ -67,14 +68,34 @@ export function examinationRoutes(config) {
       AcademicTerm.find({ schoolId }).select("_id name sessionId"),
       SchoolClass.find({
         schoolId,
-        ...(!isExamAdmin(req) ? { _id: { $in: req.teacher.classIds } } : {}),
+        ...(!isExamAdmin(req)
+          ? {
+              _id: {
+                $in: req.teacherAccess
+                  ? req.teacherAccess.rows
+                      .filter((r) => r.kind === "teaching")
+                      .map((r) => r.classId)
+                  : req.teacher.classIds,
+              },
+            }
+          : {}),
       }).select("_id name arms inactiveArms status"),
       Subject.find({
         schoolId,
         ...(!isExamAdmin(req)
           ? {
-              _id: { $in: req.teacher.subjectIds },
-              classId: { $in: req.teacher.classIds },
+              _id: {
+                $in: req.teacherAccess
+                  ? req.teacherAccess.rows
+                      .filter((r) => r.kind === "teaching")
+                      .map((r) => r.subjectId)
+                  : req.teacher.subjectIds,
+              },
+              classId: {
+                $in: req.teacherAccess
+                  ? req.teacherAccess.rows.map((r) => r.classId)
+                  : req.teacher.classIds,
+              },
             }
           : {}),
       }).select("_id name classId status"),
@@ -82,7 +103,19 @@ export function examinationRoutes(config) {
     res.json({
       sessions,
       terms,
-      classes,
+      classes: req.teacherAccess
+        ? classes.map((c) => ({
+            ...c.toObject(),
+            arms: c.arms.filter((arm) =>
+              req.teacherAccess.rows.some(
+                (r) =>
+                  String(r.classId) === c.id &&
+                  r.kind === "teaching" &&
+                  r.arm === arm,
+              ),
+            ),
+          }))
+        : classes,
       subjects,
       administrator: isExamAdmin(req),
     });
@@ -108,11 +141,21 @@ export function examinationRoutes(config) {
     if (!isExamAdmin(req)) {
       if (
         input.classId &&
-        !req.teacher.classIds.some((id) => String(id) === input.classId)
+        !(
+          req.teacherAccess
+            ? req.teacherAccess.rows
+                .filter((r) => r.kind === "teaching")
+                .map((r) => r.classId)
+            : req.teacher.classIds
+        ).some((id) => String(id) === input.classId)
       )
         fail(403, "Class is not assigned to you.");
-      filter.classId = input.classId || { $in: req.teacher.classIds };
-      filter["subjects.subjectId"] = { $in: req.teacher.subjectIds };
+      if (req.teacherAccess)
+        Object.assign(filter, examAssignmentFilter(req.teacherAccess));
+      else {
+        filter.classId = input.classId || { $in: req.teacher.classIds };
+        filter["subjects.subjectId"] = { $in: req.teacher.subjectIds };
+      }
     }
     if (input.status) filter.status = input.status;
     if (input.search)
@@ -139,14 +182,12 @@ export function examinationRoutes(config) {
     });
   });
   router.post("/", admin, async (req, res) =>
-    res
-      .status(201)
-      .json({
-        record: examinationDetails(
-          req,
-          await saveExamination(req, examInput.parse(req.body)),
-        ),
-      }),
+    res.status(201).json({
+      record: examinationDetails(
+        req,
+        await saveExamination(req, examInput.parse(req.body)),
+      ),
+    }),
   );
   router.put("/:id", admin, async (req, res) =>
     res.json({
@@ -182,11 +223,9 @@ export function examinationRoutes(config) {
       gradingScale: source.gradingScale.map((item) => item.toObject()),
       positionsEnabled: source.positionsEnabled,
     });
-    res
-      .status(201)
-      .json({
-        record: examinationDetails(req, await saveExamination(req, input)),
-      });
+    res.status(201).json({
+      record: examinationDetails(req, await saveExamination(req, input)),
+    });
   });
   router.get("/:id/sheet", async (req, res) => {
     const exam = await ownedExam(req, examId.parse(req.params.id));
@@ -356,7 +395,7 @@ export function examinationRoutes(config) {
       _id: examId.parse(req.params.resultId),
     });
     if (!result) fail(404, "Result not found.");
-    requireExamSubject(req, exam, String(result.subjectId));
+    requireExamArm(req, exam, String(result.subjectId), result.arm);
     const filter = { schoolId: req.user.schoolId, resultId: result._id };
     const [records, total] = await Promise.all([
       ResultRevision.find(filter)
@@ -385,12 +424,10 @@ export function examinationRoutes(config) {
   router.delete("/:id", admin, async (req, res) => {
     z.object({}).strict().parse(req.query);
     await ownedExam(req, examId.parse(req.params.id));
-    res
-      .status(405)
-      .json({
-        message:
-          "Examinations and results are retained permanently. Use an audited reopening/correction or a new examination.",
-      });
+    res.status(405).json({
+      message:
+        "Examinations and results are retained permanently. Use an audited reopening/correction or a new examination.",
+    });
   });
   return router;
 }

@@ -50,6 +50,32 @@ const schema = new mongoose.Schema(
     },
     classIds: [{ type: mongoose.Schema.Types.ObjectId, ref: "SchoolClass" }],
     subjectIds: [{ type: mongoose.Schema.Types.ObjectId, ref: "Subject" }],
+    assignmentMode: {
+      type: String,
+      enum: ["legacy", "explicit"],
+      default: "legacy",
+    },
+    attendanceGrants: [
+      {
+        _id: false,
+        classId: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "SchoolClass",
+          required: true,
+        },
+        arm: { type: String, default: "", maxlength: 20 },
+        sessionId: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "AcademicSession",
+          default: null,
+        },
+        termId: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "AcademicTerm",
+          default: null,
+        },
+      },
+    ],
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",

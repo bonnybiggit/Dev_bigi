@@ -12,6 +12,8 @@ import useStudentOptions from "../hooks/useStudentOptions";
 import { StatusBadge } from "../components/SchoolTable";
 import StudentForm from "../components/StudentForm";
 import StudentStatusActions from "../components/StudentStatusActions";
+import StudentPortalAccount from "../components/StudentPortalAccount";
+import MedicalInformation from "../components/MedicalInformation";
 import GuardianRelationships from "../components/GuardianRelationships";
 export default function StudentProfile() {
   const { id } = useParams();
@@ -136,6 +138,19 @@ export default function StudentProfile() {
             </div>
           </section>
         ))}
+      {!error && record?.applicationId && (
+        <p className="panel">
+          <Link to={`/school/applications/${record.applicationId}`}>
+            Original application: {record.applicationReference}
+          </Link>
+        </p>
+      )}
+      {!error && record && (
+        <MedicalInformation key={id + "medical"} studentId={id} />
+      )}
+      {!error && record && (
+        <StudentPortalAccount key={id + record.status} student={record} />
+      )}
       {!error && record && (
         <GuardianRelationships key={id} studentId={id} status={record.status} />
       )}

@@ -92,7 +92,10 @@ const pay = (invoiceId, amount, extra = {}) =>
   });
 before(
   async () => {
-    mongo = await MongoMemoryReplSet.create({ replSet: { count: 1 } });
+    mongo = await MongoMemoryReplSet.create({
+      replSet: { count: 1 },
+      instanceOpts: [{ launchTimeout: 60000 }],
+    });
     await mongoose.connect(mongo.getUri());
     await Promise.all([
       User.init(),

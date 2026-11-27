@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'self'; style-src 'unsafe-inline'"
+    />
+    <title>School Desktop Preview</title>
+    <style>
+      body {
+        background: #f3f6fb;
+        color: #162b4a;
+        font: 16px system-ui;
+        margin: 0;
+        padding: 60px;
+      }
+      main {
+        max-width: 660px;
+        margin: 50px auto;
+        background: white;
+        padding: 40px;
+        border-radius: 18px;
+      }
+      h1 {
+        font-size: 28px;
+      }
+      p {
+        line-height: 1.7;
+      }
+      button {
+        background: #245fc3;
+        color: white;
+        border: 0;
+        border-radius: 8px;
+        padding: 12px 18px;
+        margin: 12px 10px 0 0;
+        cursor: pointer;
+      }
+      footer {
+        margin-top: 40px;
+        color: #65758d;
+        font-size: 13px;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>School Desktop Preview</h1>
+      <p id="status" role="status">Starting the local school installation...</p>
+      <p>
+        Your school's records and encrypted backups stay in your persistent
+        Windows profile, outside the installation folder.
+      </p>
+      <div id="actions" hidden>
+        <button id="retry">Retry startup</button
+        ><button id="choose">Choose mongod.exe</button>
+      </div>
+      <form id="connection">
+        <h2>Connection settings</h2>
+        <label
+          >Use this PC as
+          <select id="mode">
+            <option value="standalone">Standalone — this PC only</option>
+            <option value="server">Main Server — share over the LAN</option>
+            <option value="client">
+              LAN Client — connect to the Main Server
+            </option>
+          </select>
+        </label>
+        <p id="address-row">
+          <label
+            >HTTPS server address<br /><input
+              id="server-url"
+              type="url"
+              placeholder="https://192.168.1.10:5443"
+              size="44"
+          /></label>
+        </p>
+        <p id="fingerprint-row">
+          <label
+            >Main Server certificate SHA-256 fingerprint<br /><input
+              id="fingerprint"
+              size="64"
+              autocomplete="off"
+          /></label>
+        </p>
+        <p>
+          Standalone and Main Server retain this PC's school data. LAN Client
+          starts no local database or backend. Changing mode retains all
+          existing local records.
+        </p>
+        <button type="submit">Save and connect</button>
+      </form>
+      <section id="lan-info" hidden>
+        <h2>Main Server identity</h2>
+        <p id="lan-url"></p>
+        <p>Share this SHA-256 fingerprint through a trusted channel:</p>
+        <textarea id="lan-fingerprint" readonly rows="3" cols="56"></textarea>
+        <p id="lan-certificate"></p>
+        <p>
+          Browser users must trust the public .cer certificate on their device
+          after verifying its fingerprint. Never share the .pfx, keyfile or
+          installation settings. Allow only the HTTPS application port through
+          the Private-profile firewall; never allow MongoDB port 27028.
+        </p>
+      </section>
+      <footer>Developed by Dev_Bigi</footer>
+    </main>
+    <script src="boot.js"></script>
+  </body>
+</html>

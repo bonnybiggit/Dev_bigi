@@ -9,8 +9,9 @@ import {
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { api, errorMessage } from "../lib/api";
+import SchoolIdentity from "../components/SchoolIdentity";
 export default function SchoolDashboard() {
-  const { user } = useAuth();
+  const { user, school } = useAuth();
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
   const load = useCallback(async () => {
@@ -74,11 +75,8 @@ export default function SchoolDashboard() {
       ) : (
         <>
           <section className="network-banner">
-            <div className="banner-icon">
-              <School size={29} />
-            </div>
             <div>
-              <h2>{data.school.name}</h2>
+              <SchoolIdentity school={school} />
               <p>
                 {data.school.city}, {data.school.country} ·{" "}
                 {data.school.schoolType}

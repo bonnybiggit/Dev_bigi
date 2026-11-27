@@ -34,6 +34,8 @@ const own = (req) => ({
 const schoolView = (school) => ({
   name: school.name,
   logoUrl: school.logoUrl,
+  phone: school.phone,
+  email: school.email,
   address: school.address,
   city: school.city,
   country: school.country,

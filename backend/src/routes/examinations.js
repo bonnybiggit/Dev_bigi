@@ -384,7 +384,16 @@ export function examinationRoutes(config) {
     })
       .select("publication createdAt")
       .sort({ publication: -1 });
-    res.json({ card, publications, currentState: exam.status });
+    res.json({
+      card,
+      publications,
+      currentState: exam.status,
+      school: Object.fromEntries(
+        ["name", "logoUrl", "address", "city", "country", "phone", "email"].map(
+          (key) => [key, req.school[key] || ""],
+        ),
+      ),
+    });
   });
   router.get("/:id/results/:resultId/history", async (req, res) => {
     const input = paging.parse(req.query),

@@ -4,6 +4,7 @@ import { Printer } from "lucide-react";
 import { api } from "../lib/api";
 import { configurationError } from "../lib/academicConfiguration";
 import { money } from "../lib/finance";
+import SchoolIdentity from "../components/SchoolIdentity";
 export default function PaymentReceipt() {
   const { id } = useParams();
   const [data, setData] = useState(null),
@@ -51,17 +52,7 @@ export default function PaymentReceipt() {
         <article className="payment-receipt">
           <header>
             <div>
-              <h2>{data.school.name}</h2>
-              <p>
-                {[data.school.address, data.school.city, data.school.country]
-                  .filter(Boolean)
-                  .join(", ")}
-              </p>
-              <p>
-                {[data.school.phone, data.school.email]
-                  .filter(Boolean)
-                  .join(" · ")}
-              </p>
+              <SchoolIdentity school={data.school} />
             </div>
             <strong
               className={

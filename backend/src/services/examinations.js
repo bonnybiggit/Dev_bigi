@@ -702,6 +702,9 @@ export function changeExamState(req, id, input) {
               )?.comment || "",
             school: {
               name: req.school.name,
+              logoUrl: req.school.logoUrl,
+              phone: req.school.phone,
+              email: req.school.email,
               address: req.school.address,
               city: req.school.city,
               country: req.school.country,

@@ -13,8 +13,12 @@ import {
 import Brand from "../components/Brand";
 import { useAuth } from "../context/AuthContext";
 import { errorMessage } from "../lib/api";
+import useLoginSchool from "../hooks/useLoginSchool";
 export default function Login({ schoolLogin = false, teacherLogin = false }) {
   const { user, loading, login } = useAuth();
+  const { school, schoolId, setSchoolId, schoolQuery } = useLoginSchool(
+    schoolLogin || teacherLogin,
+  );
   const [visible, setVisible] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -28,6 +32,7 @@ export default function Login({ schoolLogin = false, teacherLogin = false }) {
         {
           email: form.get("email").trim(),
           password: form.get("password"),
+          ...((schoolLogin || teacherLogin) && schoolId ? { schoolId } : {}),
         },
         schoolLogin,
         teacherLogin,
@@ -44,13 +49,15 @@ export default function Login({ schoolLogin = false, teacherLogin = false }) {
   return (
     <div className="login-page">
       <section className="login-story">
-        <Brand />
+        <Brand school={school} />
         <div className="story-content">
-          <div className="eyebrow light">ONE PLATFORM. EVERY SCHOOL.</div>
+          <div className="eyebrow light">
+            {school ? "YOUR SCHOOL WORKSPACE" : "ONE PLATFORM. EVERY SCHOOL."}
+          </div>
           <h1>
-            A stronger foundation
+            {school?.name || "A stronger foundation"}
             <br />
-            for every school.
+            {!school && "for every school."}
           </h1>
           <p>
             Bring your schools together. Manage your network with clarity,
@@ -82,7 +89,7 @@ export default function Login({ schoolLogin = false, teacherLogin = false }) {
             </span>
           </div>
         </div>
-        <div className="story-footer">Dev_Bigi School Management System</div>
+        <div className="story-footer no-print">Developed by Dev_Bigi</div>
       </section>
       <section className="login-form-panel">
         <div className="login-form">
@@ -105,6 +112,18 @@ export default function Login({ schoolLogin = false, teacherLogin = false }) {
                 : "Sign in to manage your school network."}
           </p>
           <form onSubmit={submit}>
+            {(schoolLogin || teacherLogin) && (
+              <label>
+                School ID (optional for existing accounts)
+                <input
+                  value={schoolId}
+                  onChange={(e) => setSchoolId(e.target.value.trim())}
+                  pattern="[a-fA-F0-9]{24}"
+                  maxLength={24}
+                  autoComplete="organization"
+                />
+              </label>
+            )}
             <label htmlFor="email">Email address</label>
             <div className="input-icon">
               <Mail size={18} />
@@ -158,21 +177,28 @@ export default function Login({ schoolLogin = false, teacherLogin = false }) {
           </p>
           <Link
             className="portal-link text-link"
-            to={schoolLogin ? "/login" : "/school-login"}
+            to={schoolLogin ? "/login" : `/school-login${schoolQuery}`}
           >
             {schoolLogin
               ? "Super Admin sign in"
               : "School Administrator sign in"}
           </Link>
           {!teacherLogin && (
-            <Link className="portal-link text-link" to="/teacher-login">
+            <Link
+              className="portal-link text-link"
+              to={`/teacher-login${schoolQuery}`}
+            >
               Teacher sign in
             </Link>
           )}
+          <Link
+            className="portal-link text-link"
+            to={`/student-login${schoolQuery}`}
+          >
+            Student sign in
+          </Link>
         </div>
-        <div className="login-copyright">
-          © {new Date().getFullYear()} Dev_Bigi. All rights reserved.
-        </div>
+        <div className="login-copyright no-print">Developed by Dev_Bigi</div>
       </section>
     </div>
   );

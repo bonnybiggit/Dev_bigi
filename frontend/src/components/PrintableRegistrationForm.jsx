@@ -3,6 +3,7 @@
   [value?.firstName, value?.middleName, value?.lastName]
     .filter(Boolean)
     .join(" ");
+import { SchoolLogo } from "./SchoolIdentity";
 const dateText = (value) =>
   value
     ? new Date(value).toLocaleDateString("en-GB", { timeZone: "Africa/Lagos" })
@@ -182,12 +183,12 @@ export default function PrintableRegistrationForm({ document, title }) {
     const guardians = snapshot.guardians?.length
       ? snapshot.guardians
       : [{}, {}];
-    chunks(guardians, 2).forEach((group, i) =>
+    chunks(guardians, 1).forEach((group, i) =>
       add(
         "Parent and guardian information",
         <>
           {group.map((g, j) => (
-            <GuardianFields key={j} g={g} index={i * 2 + j} />
+            <GuardianFields key={j} g={g} index={i + j} />
           ))}
           <p>
             Additional guardians may be recorded on a clearly referenced
@@ -198,22 +199,29 @@ export default function PrintableRegistrationForm({ document, title }) {
       ),
     );
     add(
-      "Medical, emergency and supporting documents",
+      "Medical and emergency information",
       <>
         <SafetyFields medical={boundedMedical} />
-        <h3>Supporting documents checklist</h3>
-        <div className="paper-checklist">
-          {snapshot.checklist.map((label) => (
-            <div key={label}>
-              <span className="paper-checkbox">
-                {snapshot.receivedDocuments?.includes(label) ? "X" : ""}
-              </span>
-              {label}
-            </div>
-          ))}
-        </div>
-        <Field label="Additional document notes" wide large />
       </>,
+    );
+    chunks(snapshot.checklist, 6).forEach((group, i) =>
+      add(
+        i ? "Supporting documents continuation" : "Supporting documents",
+        <>
+          <h3>Supporting documents checklist</h3>
+          <div className="paper-checklist">
+            {group.map((label) => (
+              <div key={label}>
+                <span className="paper-checkbox">
+                  {snapshot.receivedDocuments?.includes(label) ? "X" : ""}
+                </span>
+                {label}
+              </div>
+            ))}
+          </div>
+          <Field label="Additional document notes" wide large />
+        </>,
+      ),
     );
     const privacy = Array.from(
       snapshot.privacyNotice || "Contact the school for its privacy notice.",
@@ -263,7 +271,7 @@ export default function PrintableRegistrationForm({ document, title }) {
     const children = snapshot.children?.length
       ? snapshot.children
       : Array.from({ length: 8 }, () => ({}));
-    chunks(children, 8).forEach((group) =>
+    chunks(children, 4).forEach((group) =>
       add(
         "Children attending the school",
         <>
@@ -291,15 +299,19 @@ export default function PrintableRegistrationForm({ document, title }) {
               ))}
             </tbody>
           </table>
-          <h3>Official verification</h3>
-          <Field
-            label="Existing verified guardian record / new record decision"
-            wide
-          />
-          <Field label="Verified by school administrator / date" wide />
-          <Signature />
         </>,
       ),
+    );
+    add(
+      "Official guardian verification",
+      <>
+        <Field
+          label="Existing verified guardian record / new record decision"
+          wide
+        />
+        <Field label="Verified by school administrator / date" wide />
+        <Signature />
+      </>,
     );
   } else if (type === "medical_emergency") {
     add(
@@ -582,6 +594,12 @@ export default function PrintableRegistrationForm({ document, title }) {
             ))}
           </tbody>
         </table>
+      </>,
+    );
+    add(
+      "Clearance authorisation",
+      <>
+        <StudentIdentity s={s} snapshot={snapshot} />
         <Field label="Final school decision / outstanding items" wide large />
         <Signature label="Authorised administrator signature" />
         <div className="stamp-placeholder">Official school stamp</div>
@@ -623,7 +641,7 @@ export default function PrintableRegistrationForm({ document, title }) {
       {pages.map((page, index) => (
         <article className="registration-form-sheet" key={index}>
           <header className="registration-form-header">
-            {school.logoUrl && <img src={school.logoUrl} alt="School logo" />}
+            <SchoolLogo school={school} />
             <div>
               <h1>{school.name}</h1>
               <p>
@@ -657,7 +675,7 @@ export default function PrintableRegistrationForm({ document, title }) {
           <h3 className="form-page-title">{page.heading}</h3>
           <div className="form-sheet-content">{page.content}</div>
           <footer className="registration-form-footer">
-            <span>Powered by Dev_Bigi School Management System</span>
+            <span>{school.name}</span>
             <span>
               {document.reference || "Generic template"} | v
               {document.templateVersion} | Page {index + 1} of {pages.length}

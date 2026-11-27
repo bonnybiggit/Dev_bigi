@@ -1,5 +1,65 @@
 # Dev_Bigi School Management System
 
+## Windows Desktop Preview
+
+### Version 0.2: Standalone, Main Server and LAN Client
+
+New installations show a mode picker before starting services. Existing desktop installations retain Standalone mode, their data directory, database selection, accounts, signing secret and backups. Open **Connection settings** in the desktop menu to change mode. Switching to Client preserves existing local records and starts neither MongoDB nor a backend. Clients need no separately installed Node.js, MongoDB, npm, Atlas credentials or personal online account. Browser clients need only a supported browser.
+
+| Mode | Services on this PC | Access |
+| --- | --- | --- |
+| Standalone | Authenticated loopback MongoDB and backend | Local Electron window |
+| Main Server | Same services plus an HTTPS listener | Local window and LAN users |
+| LAN Client | Neither MongoDB nor backend | Configured HTTPS server only |
+
+1. **Main Server:** install MongoDB and its Windows runtime as described below. Choose Main Server and enter an address assigned to this PC, for example `https://192.168.1.10:5443`. Private IPv4 addresses and local computer names (optionally `.local`) are supported. HTTP, internet addresses, embedded credentials and URL paths are refused. Keep the address stable, for example through a router DHCP reservation. Register the school, owner and administrator on the server's local desktop window; remote bootstrap/registration is blocked.
+2. Reopen **Connection settings** to see the server URL, SHA-256 certificate fingerprint and public certificate path, typically `%LOCALAPPDATA%\SchoolManagementDesktopPreview\tls\192_168_1_10.cer`. Share only this `.cer` and fingerprint through a trusted channel. Never share `.pfx`, `replica.key`, `installation.json` or database files. The generated HTTPS identity lasts two years and persists across restarts; a changed address/renewed identity requires client trust updates.
+3. **Desktop client:** install the same `setup.exe`, choose LAN Client and enter the HTTPS address and fingerprint (colons optional). The exact fingerprint, certificate name and validity are checked before loading the server. No certificate-warning bypass is enabled.
+4. **Windows browser client:** securely copy the public `.cer`, compare its file SHA-256 with the server's displayed fingerprint, then import it into Current User → Trusted Root Certification Authorities. Open `https://192.168.1.10:5443/school-login` and sign in with the school's local account:
+
+   ```powershell
+   Get-FileHash -Algorithm SHA256 -LiteralPath .\192_168_1_10.cer
+   # Import only after the fingerprint matches the server operator's value:
+   Import-Certificate -FilePath .\192_168_1_10.cer -CertStoreLocation Cert:\CurrentUser\Root
+   ```
+
+5. If Windows Firewall blocks the trusted LAN, an administrator can add the following rule on the server, replacing the example IP/port. The application does not silently change the firewall. Use the Private network profile only on a trusted network; guest Wi-Fi/client isolation can prevent device-to-device access.
+
+   ```powershell
+   New-NetFirewallRule -DisplayName 'School Desktop HTTPS LAN' -Direction Inbound -Action Allow -Protocol TCP -LocalAddress 192.168.1.10 -LocalPort 5443 -RemoteAddress LocalSubnet -Profile Private
+   ```
+
+   **Never allow or forward MongoDB port 27028.** Do not enable router port forwarding or internet exposure.
+6. Keep the Main Server app open and PC awake. Closing it stops its application listeners and identified MongoDB process. Backups, recovery activation and installation administration remain available only on the server desktop. Existing administrator/teacher/student roles, tenant scoping and session revocation apply equally over LAN. Owner login is available remotely, but cannot administer machine backups there.
+
+The HTTPS listener binds only to the selected LAN interface. LAN cookies are HttpOnly, Secure and SameSite=Strict. Host/Origin checks, authentication, rate limits and school scoping apply without trusting tenant IDs or proxy headers. The app needs no internet/CDN. Initial desktop connection failures retry every five seconds. Loaded browser/desktop pages probe health, show loss/recovery messages and offer **Reload workspace** after recovery; review unsaved edits before reloading. Failed writes are never queued or automatically replayed. LAN use still requires server power and a functioning local network.
+
+Keep ample free server disk space for records, MongoDB journals, recovery databases and backup history. The tested MongoDB 8.2.6 refuses certain writes below **500 MiB free**; this can interrupt a restore without activating its target. Free space and retry rather than deleting business databases or weakening MongoDB's safety threshold. Run large verification drills serially on constrained machines. TLS certificate trust/renewal is manual; Windows x64/private IPv4 LANs are supported, and the installer remains unsigned.
+
+Both server modes now enforce **SCRAM authentication and replica-set keyfile authentication** on MongoDB, bound only to **127.0.0.1:27028**. Random supervisor/application credentials are protected with Windows user encryption. The application has database read/write, database-administration and monitoring roles, without MongoDB user-administration privileges. Private PFX/keyfile permissions allow only the Windows user, SYSTEM and Administrators; private keys never reach clients. The database connection URI contains no password.
+
+Upgrades migrate only the exact older desktop MongoDB configuration. An identified legacy process is stopped, its configuration saved as `mongodb/mongod.cfg.pre-auth`, authentication enabled and initial users created through MongoDB's localhost exception. School collections, account hashes, backups and recovery selection are retained. Unknown configurations, unrelated occupied ports, unexpected existing MongoDB users or missing security files fail closed. Keep the protected settings/keyfile; do not downgrade to the unauthenticated 0.1 launcher. Transfer schools to another account/PC using encrypted application backups, since Windows-protected secrets are not portable.
+
+Validation commands: `npm run desktop:test` tests security/migration; `npm run desktop:verify` tests the installed Standalone backup/recovery/persistence flow; `npm run desktop:verify:lan -- --keep-server` tests an installed Main Server, two independent HTTPS sessions and a separate Client profile, then waits for a real second-device check. Press Enter in that terminal to stop the synthetic server and uninstall the test copy. Do not run desktop drills simultaneously: they share port 27028. Builds use fresh `.local/desktop-package-*` directories so an open older `release/win-unpacked` copy is not overwritten. Tests use separate synthetic data.
+
+Build on Windows x64 with `npm ci` then `npm run desktop:dist`. The Electron / Electron Builder / NSIS output is **release/setup.exe**, with **release/setup.exe.sha256**. Build-time dependencies may require internet; the installed application bundles its frontend, backend, Node runtime and production dependencies and operates offline. Environment files, Atlas credentials, developer accounts, databases and backups are excluded from the package. No commit, push or deployment is part of this workflow.
+
+On Standalone/Main Server PCs only, install MongoDB Community Server **7 or newer** and its required Microsoft Visual C++ runtime beforehand (use offline prerequisite installers for an offline computer). MongoDB itself is an external prerequisite, not bundled or downloaded automatically. Launch **School Desktop Preview** after installation. After choosing Standalone or Main Server, the launcher locates `mongod.exe` under Program Files or PATH, or lets you choose it. It automatically writes the private local configuration, starts a single-member `schoolDesktopRs` replica set on **127.0.0.1:27028**, waits for PRIMARY, initializes indexes and starts the bundled API/frontend on an available loopback port. It does not modify existing MongoDB services, firewall rules or Atlas databases. Closing the app waits for backup operations and shuts down its identified local database. Startup here means application launch; no Windows sign-in task/service is installed.
+
+The first run is empty. Register your school, an installation owner (Super Admin for full backups/recovery) and a separate school administrator with your own local sign-in identifiers and passwords. No personal online account, email delivery, seeded school or default password is required. These identifiers are local accounts. Use the School Administrator portal for daily work and the Super Admin portal for **Backup & Recovery**. For an existing archive on a new computer, choose **Recover an existing school from backup**, create a temporary owner, inspect and restore the archive, then activate the verified recovery database in the desktop interface. Restored users keep their original passwords.
+
+Persistent files live under **%LOCALAPPDATA%\\SchoolManagementDesktopPreview\\**, separately from installed program files: `mongodb/data`, `mongodb/mongod.log`, `backups`, `installation.json`, browser state and logs. The signing secret is protected for the current Windows user. NSIS rejects overlapping installation/data locations before extraction and retains data on upgrades and uninstall. Do not manually delete this folder. Keep encrypted backup copies on another device and keep their recovery passphrases separately. Copying MongoDB files while running is not a backup; use Backup & Recovery. Do not copy the Windows-protected settings to another account/computer; restore an encrypted archive there instead.
+
+The renderer is sandboxed with Node integration disabled and context isolation enabled. External requests/navigation and permissions are blocked. The HTTP service binds to loopback and checks Host, Origin and a fresh private launch token; ordinary browsers cannot use it. MongoDB also binds only to loopback. MongoDB now requires authentication. Main Server exposes a separate HTTPS application listener for LAN users; the local HTTP listener remains private. This preview assumes a trusted server Windows account/computer; operating-system administrators can access local machine secrets. External logo URLs are unavailable offline; upload a local logo in School Profile.
+
+The installer is unsigned, so Windows may display SmartScreen warnings. It targets Windows x64 only; MongoDB/Windows compatibility and prerequisite runtime installation must be checked on each target machine. Daily backups run while the application is open. Upgrades must retain the same app ID and persistent directory; future incompatible schema migrations need separate validation. The frontend currently has a Vite bundle-size advisory.
+
+`npm run desktop:verify` performs an opt-in real silent installation and reinstall using synthetic accounts and isolated `.local/desktop-drill-*` program/data folders. It checks the installed Electron application through a loopback debugging session, registration, both logins, network restrictions, encrypted backup/restore, recovery activation, restart and persistence. It retains evidence and synthetic data there; it never targets existing school data. It registers preview shortcuts/uninstall information for the current user. Debugging is enabled only by the explicit verification flag. See the verification results recorded below for checks actually completed in this environment.
+
+Historical desktop 0.1 validation (27 November 2026): all **218 backend tests passed**, zero failures/skips; ESLint and the desktop frontend production build passed. The packaged ASAR was inspected: bundled frontend/backend present, no private environment/data/archive paths and no Atlas SRV connection strings in application files. Windows x64 NSIS compilation passed and the installer checksum is beside the artifact. The default Electron icon and unsigned executable are preview limitations; physical printing, SmartScreen behavior on other computers and future-version schema upgrades require target-machine validation.
+
+The final installed-app drill passed **all 10 checks** on Windows with MongoDB 8.2.6: real NSIS silent install, rendered first-run form and independent registration, owner/admin login, blocked external renderer traffic and unauthenticated localhost access, encrypted backup and verified restore, same-version reinstall, retained accounts/school/backup files and history, activation of the recovered database with restored login after restart, and database/settings/backup retention after uninstall. The hidden-parent-directory frontend-serving bug discovered by this drill was fixed; the final focused desktop regression passed **8/8**, and lint passed again. Evidence: [.local/desktop-drill-1795779540655/result.json](.local/desktop-drill-1795779540655/result.json); distributable summary: [release/verification.json](release/verification.json). Verification used synthetic data and renderer-issued API calls, with a DOM check of the setup form; interactive installer clicks, manual completion of every form and a clean machine without prerequisites remain manual checks. Test application/MongoDB processes were stopped, test uninstall information/shortcuts removed, and synthetic persistent data retained. Existing business databases were left untouched.
+
 Milestones 1–6: project foundation, Super Admin workspace, School Administrator accounts, school profile, academic structure, teachers/staff, students/admissions, parents/guardians, attendance, and school fees/finance. React/Vite (JavaScript), Tailwind CSS, Lucide React, Axios, Express, MongoDB/Mongoose, bcrypt, and JWT cookies.
 
 Milestone 7 adds examinations, assigned-teacher score entry, result approval/publication and printable report cards. Existing modules and their data remain available.
@@ -7,6 +67,8 @@ Milestone 7 adds examinations, assigned-teacher score entry, result approval/pub
 ## Run locally
 
 Requires Node.js 20.19+ or 22.12+ and MongoDB Atlas or a MongoDB replica set. Milestone 3 uses transactions; a standalone local `mongod` is not sufficient for configuration writes. Your existing Atlas connection and DNS configuration work unchanged.
+
+For an independent Windows installation with persistent local storage and no Atlas connection, use **Independent Windows local replica set** below. Its scripts use separate environment files and ports; the existing commands in this section retain their original environment behaviour.
 
 From the project root:
 
@@ -56,7 +118,7 @@ Milestone 2 validation: all 28 backend tests passed, ESLint passed, and the fron
 
 No new environment variables, reseeding, data reset, or sample records are required. Start with `npm run dev` and sign in through `/school-login` with Bright Future International School's administrator account. Existing schools gain optional contact and logo fields with empty defaults; the API waits for the new academic indexes before listening.
 
-1. **School Profile** (`/school/profile`): review or edit the school name, address, city, country, phone, email, type and logo URL. A logo must be an HTTPS image URL without embedded credentials; file uploads and image hosting are not implemented. Platform status and ownership fields cannot be changed. `/school/settings` redirects here.
+1. **School Profile** (`/school/profile`): review or edit the school name, address, city, country, phone, email, type and logo. Upload a local PNG/JPEG logo (up to 256 KiB and 1024 × 1024 pixels) for use without internet, or retain an existing HTTPS image URL without embedded credentials. Platform status and ownership fields cannot be changed. `/school/settings` redirects here. See the school branding section below for storage, permissions and sign-in links.
 2. **Academic Sessions** (`/school/sessions`): create `2026/2027`, with dates such as `2026-09-01` to `2027-07-31`, then activate it using the confirmation dialog. Create `2027/2028` for the following year as needed. Session names are unique per school; dates cannot overlap, including sharing an end/start day. New sessions start inactive. Replacing the active session requires explicit confirmation; declining leaves the current session untouched. `/school/academics` redirects here.
 3. **Terms** (`/school/terms`): choose a session and create First Term, Second Term and Third Term. For the sample above, try `2026-09-01`–`2026-12-18`, `2027-01-05`–`2027-04-01`, and `2027-04-20`–`2027-07-30`. A term cannot duplicate another name or overlap dates within that session, leave the parent's dates, or move between sessions. Session edits cannot exclude existing terms. Each session can have one active term, independently of whether that session is active; replacing it requires confirmation.
 4. **Classes** (`/school/classes`): use Nursery 1–3 or Primary 1–6 suggestions, or another appropriate class name. Enter optional comma-separated arms such as `A, B, C` and total capacity across the whole class. Arms are normalized to uppercase and cannot duplicate each other. Class names are unique per school, including inactive classes.
@@ -181,7 +243,7 @@ Milestone 2 tests additionally cover generated temporary-password hashing and no
 
 `npm run build` creates `frontend/dist`; the backend runs directly with `npm start -w backend`. Deploy the frontend and reverse-proxy `/api` to Express under the same HTTPS origin. Configure `FRONTEND_ORIGIN` to that exact HTTPS origin, `NODE_ENV=production`, private MongoDB access and a unique secret. Serve SPA routes with an `index.html` fallback. Do not serve `.env` or source credentials. The development proxy is not part of a production build. Separate-site frontend/API deployments are not supported by the Strict cookie policy.
 
-Before broader commercial deployment, plan backups, monitoring, an external rate-limit store when running multiple API processes, password recovery/MFA and audit logging. Those are outside this milestone. No deployment is performed by this project setup.
+Before broader commercial deployment, plan monitoring, an external rate-limit store when running multiple API processes and password recovery/MFA. Local encrypted backups, recovery and their audit history are now implemented in the Backup & Recovery section below. Other operational requirements remain separate. No deployment is performed by this project setup.
 
 ## Milestone 4 Part 1: teachers and staff
 
@@ -631,7 +693,7 @@ Verification completed on 25 November 2026: the full backend suite passed **122/
 
 ### Completed student experience
 
-Student sign in is available at `/student-login`, with Dev_Bigi branding, school ID, admission number, show/hide password, validation and administrator-assisted recovery instructions. Successful sign in leads to `/student/dashboard`, after the mandatory initial password change. Existing administrator and teacher login routes remain available.
+Student sign in is available at `/student-login`, with school-specific branding when a school ID is selected, admission number, show/hide password, validation and administrator-assisted recovery instructions. Successful sign in leads to `/student/dashboard`, after the mandatory initial password change. Existing administrator and teacher login routes remain available.
 
 The student workspace reuses the navy sidebar, cards, responsive tables, pagination, confirmation dialogs, authentication context, shared API boundary, money formatting and published report-card renderer. It includes an overview, read-only academic profile, active current-class subjects and explicitly assigned teacher names, personal attendance, published examination summaries and report cards, school-authorised fees and receipts, password settings and logout. Timetable, Assignments & Homework and Announcements remain clearly labelled coming soon. No parent or guardian portal is included.
 
@@ -842,7 +904,7 @@ Administrators can issue a numbered student application without registering a st
 
 ### Printable inventory and categories
 
-All templates have school-specific name/logo/address/contact details, handwriting space, signature/date areas, reference and issue date where tracked, template version, explicit page numbers and the **Powered by Dev_Bigi School Management System** footer. The preview uses locally rendered A4 pages and browser Print / Save as PDF; no external PDF service is used. Multi-page student forms include separate personal, guardian, safety/checklist, declaration/privacy and official review sections. Long safety text uses referenced continuation pages.
+All templates have school-specific name/logo/address/contact details, handwriting space, signature/date areas, reference and issue date where tracked, template version and explicit page numbers. Printed footers identify the school; developer branding appears only in application footers. The preview uses locally rendered A4 pages and browser Print / Save as PDF; no external PDF service is used. Multi-page student forms include separate personal, guardian, safety/checklist, declaration/privacy and official review sections. Long safety text uses referenced continuation pages.
 
 | Category                 | Printable document                             | Issued reference code |
 | ------------------------ | ---------------------------------------------- | --------------------- |
@@ -909,7 +971,7 @@ Issued documents store an immutable reference/type/template version and issuance
 
 Use **Prepare and log print request**, review the resulting preview, then **Print / Save as PDF**. Each preparation records a print/reprint-request event and retains the reference. `physicalPrintConfirmed` is explicitly false: browser preparation or print-dialog use does not prove successful physical printing. Native browser printing cannot be treated as an authoritative delivery/receipt signal. Cancelled/withdrawn/rejected application copies and cancelled documents are clearly marked as retained copies in the preview.
 
-Print CSS removes navigation, dashboard controls and buttons, uses a named A4 page with 10 mm margins, repeats school/reference/page information and leaves authentic signature/stamp areas empty. Preview every page before printing, disable browser-generated headers/footers if they overlap the form, and verify local printer scaling/margins. External logo URLs still need to be reachable or cached; host school branding on the local school server for future disconnected operation. No private data is encoded into a QR code or placed in a public document URL.
+Print CSS removes navigation, dashboard controls and buttons, uses a named A4 page with 10 mm margins, repeats school/reference/page information and leaves authentic signature/stamp areas empty. Preview every page before printing, disable browser-generated headers/footers if they overlap the form, and verify local printer scaling/margins. Uploaded school logos are served by the application from MongoDB; legacy external logo URLs still require connectivity. No private data is encoded into a QR code or placed in a public document URL.
 
 ### Database model and service changes
 
@@ -998,4 +1060,152 @@ Modified for these milestones: `backend/src/models/School.js`, `backend/src/mode
 
 `backend/test/admissions.test.js` uses a separate local `MongoMemoryReplSet` with fixed test credentials and a 60-second startup allowance. It never reads the production Atlas connection. It tests all generic types, reference generation/concurrency/uniqueness/immutability, request retries, school numbering, setting changes, partial drafts, workflow/reasons, medical privacy/revisions, atomic rollback/conversion, repeated/concurrent enrolment, guardian matching and sibling links, automatic teacher visibility, original-reference/guardian search, reprint history, safe document prefills, cancellation/history preservation, direct-registration compatibility, role/tenant/CSRF restrictions and suspended-school denial.
 
-Automated browser/printer verification is not claimed. Review actual A4/PDF output on target browsers/printers, especially unusual fonts, logo sizes or long prefills. References are school scoped, and initial permanent admission numbering skips existing matching manual student IDs; it does not infer or rewrite historical numbering policy. No scanned uploads, full offline synchronization, guardian portal or fee-clearance restrictions are implemented. The existing Vite main-bundle size advisory remains a performance improvement opportunity.
+Interactive browser and physical-printer verification remain manual; automated A4/PDF results are recorded below. Review output on target browsers/printers, especially unusual fonts, logo sizes or long prefills. References are school scoped, and initial permanent admission numbering skips existing matching manual student IDs; it does not infer or rewrite historical numbering policy. No scanned uploads, full offline synchronization, guardian portal or fee-clearance restrictions are implemented. The existing Vite main-bundle size advisory remains a performance improvement opportunity.
+
+### Milestones 9B/9C final verification - 26 November 2026
+
+- Focused admissions integration suite: `node --test --test-concurrency=1 test/admissions.test.js` from `backend` passed **24/24**, with no skipped or failed tests. Verified application generation/drafts/review/approval/enrolment, explicit guardian verification and sibling links, atomic rollback, concurrent/idempotent enrolment, permanent unique references and cancelled-number retention, reprint history, automatic teacher visibility, medical privacy, roles, tenant isolation, CSRF and suspended-school denial.
+- Full backend regression: `npm test` passed **182/182**, with zero failures or skips. Tests used isolated local MongoDB replica sets, not the configured Atlas database. One temporary MongoDB process needed forced termination after its shutdown grace period; the suite still exited successfully.
+- Local headless Microsoft Edge rendered the actual printable React component with production CSS and generated **22 synthetic A4 PDFs**: all 11 document types, both blank templates and long prefills. Checked PDF page dimensions (approximately 595 x 842 points), physical-page counts against the component's numbered sheets, sheet bounds, repeated reference/footer text, and hidden navigation/print controls. All 22 cases passed after fixes. The application print layout was also visually inspected under print media. These were component fixtures, not a live authenticated browser walkthrough.
+- Confirmed print bugs fixed only in `PrintableRegistrationForm.jsx`: two guardians overflowed one application page; long checklists overflowed the safety page; long child names overflowed guardian tables; clearance review and signatures overflowed one page. Guardians now receive individual application pages; checklists use separate groups of six; guardian child tables use groups of four with separate verification; clearance authorisation has its own page. The blank application now has seven correctly numbered A4 pages. Issued references, data and workflow rules are unchanged.
+- Final `npm run lint`, `npm run build` and `git diff --check` passed. Vite's existing bundle-size advisory remains: the main JavaScript chunk is **623.43 kB** before gzip (**175.15 kB** gzipped); this is not a build failure.
+
+Unresolved manual checks: live authenticated UI interaction (including keyboard/mobile behaviour and the browser print dialog), physical printers, other browser engines, externally hosted school-logo availability, and unusual fonts or branding beyond the synthetic fixtures. No new features, dependencies, production-data changes, commits, pushes or deployments were made.
+
+## School-specific branding and local logos - 26 November 2026
+
+School names, logos, addresses, phone numbers and email addresses now come from the selected/authenticated school across administrator, teacher and student workspaces and sign-in pages, registration forms, receipts and report cards. The platform login remains neutral. **Developed by Dev_Bigi** appears only in application footers, which are hidden when printing; printed documents have no developer branding. Browser titles also use the school name.
+
+### Setup and storage
+
+In **School Profile**, save contact/profile edits, then upload a PNG or JPEG logo (maximum **256 KiB**, **1024 × 1024 pixels**). Uploading immediately updates the saved logo and workspace branding. To remove it from future branding, clear the logo URL and save. Existing HTTPS logo URLs remain supported but require internet. No remote URL is fetched by the backend, and no filesystem path or filename is accepted for uploads.
+
+Logos are stored as versioned binary records in the `schoollogos` MongoDB collection and served through the application. With the application and transaction-capable MongoDB running on a local school server, uploaded logos require no internet, cloud storage or image host. An Atlas-backed installation still needs its database connection; this change does not add browser offline caching, a service worker or synchronization. Include **all database collections**, including `schools`, `schoollogos` and issued-document/report-card snapshots, in backup/restore. Local encrypted backup automation and recovery are documented below.
+
+Logo versions are retained when replaced or removed so previously issued documents keep working. Registration forms retain their issued branding snapshots. Newly published report cards snapshot logo/contact details as well as school identity; older report cards retain their academic/name/address snapshots and use current school details only for branding fields absent from the original snapshot. Receipts use the current school header. No academic, financial or admission records are rewritten by this change.
+
+### Sign-in and permissions
+
+School Profile provides `/school-login?school=<schoolId>`, `/teacher-login?school=<schoolId>` and `/student-login?school=<schoolId>` links. School IDs can also be entered on login pages; existing administrator/teacher email-only sign-in remains compatible. When a school ID is supplied, credentials must belong to that school. Logout/session expiry preserves the appropriate school sign-in destination while clearing authenticated branding; switching tenants does not reuse the previous tenant's identity.
+
+- `GET /api/branding/schools/:schoolId` intentionally exposes **only public school identity/contact fields** for active schools, before login. It exposes no users, settings, students, documents or binary data in JSON; there is no public school directory endpoint.
+- `GET /api/branding/schools/:schoolId/logos/:logoId` serves a public school-logo image only when the stored logo belongs to that active school. Both IDs are validated; altered school/logo pairs return 404. Responses have fixed image MIME types, `nosniff`, a restrictive CSP and `no-store`.
+- `POST /api/school/profile/logo` accepts strict `{ contentType, data }` JSON with base64 image bytes. Only the authenticated school's administrator with completed password setup may upload. Existing CSRF, active-account and school-suspension checks apply. Uploads are rate limited, size/dimension/signature checked; PNG chunks/checksums and bounded decompression are checked. SVG/HTML, MIME spoofing, malformed data and tenant/filename injection are rejected. Saving a local logo URL additionally verifies its school ownership. The larger JSON limit applies only to this upload path; other endpoints retain their 64 KiB limit.
+
+### Verification
+
+- Focused branding/profile/admissions checks passed **44/44**; the final standalone branding run passed **8/8**. Full backend regression passed **190/190**, with zero failures or skips, using isolated local MongoDB replica sets. Coverage includes public-field minimization, school-scoped login, roles, CSRF, malformed/oversized uploads, tenant ownership, suspension and retained image versions.
+- Live headless Edge checks used two synthetic schools, a local app/database and blocked external HTTP requests. Verified school login, rejection of another school's credentials, PNG upload, JPEG upload, immediate name/logo refresh, logout to branded login, tenant switching, student/teacher sign-in links and neutral platform login. This also caught and fixed a logout redirect race.
+- Generated **15 PDFs from live application routes**: all 11 registration templates plus administrator/student receipts and report cards. Verified school names, local logos loaded from the app, contact details, hidden developer credits and matching registration page counts. The application print layout was visually inspected. No external image service was needed.
+- Final `npm run lint` and `npm run build` passed. Vite retains the existing bundle-size advisory: **626.61 kB** main JavaScript before gzip (**176.44 kB** gzipped).
+
+Remaining manual checks: physical printers/browser print dialogs, other browser engines, mobile/keyboard accessibility and unusually long branding/font combinations. No runtime dependencies were added, no production/Atlas records or environment files were changed, and nothing was committed, pushed or deployed.
+
+## Independent Windows local replica set
+
+This is a separate, persistent, single-member replica set for local school development/installation. It supports MongoDB transactions and uses **127.0.0.1:27018**, replica set **schoolLocalRs**, database **dev_bigi_school_local**. MongoDB data and logs stay under this workspace's ignored `.local/mongodb/` directory. Existing MongoDB services, default port 27017 and Atlas environments are left alone.
+
+### Prerequisites and setup
+
+Windows, Node.js **20.19+ or 22.12+**, installed project dependencies, and an installed **MongoDB Server 7+** `mongod.exe` are required. `mongosh` is optional: the scripts use the MongoDB driver already supplied by Mongoose. Missing prerequisites are reported; scripts do not install dependencies, download binaries, register services, change PATH, change execution policy or modify Windows/firewall settings. Run these commands in a normal PowerShell terminal from the project root:
+
+```powershell
+.\scripts\windows\Setup-LocalMongo.ps1
+# If MongoDB is outside PATH and the usual Program Files location:
+# .\scripts\windows\Setup-LocalMongo.ps1 -MongodPath 'D:\MongoDB\bin\mongod.exe'
+
+.\scripts\windows\Start-LocalMongo.ps1
+.\scripts\windows\Get-LocalMongoStatus.ps1
+.\scripts\windows\Test-LocalMongo.ps1
+.\scripts\windows\Stop-LocalMongo.ps1
+```
+
+Setup creates `.local/mongodb/mongod.cfg`, an installation manifest, a persistent `data/` directory, **backend/.env.local** with a newly generated private JWT secret, and **frontend/.env.school-local**. Repeating setup preserves existing files and data. Existing `.env`/Atlas configuration is not read by the database manager or overwritten. No administrator credentials are generated or seeded automatically. Do not copy an Atlas URI into the local file: local launchers reject every URI except the exact dedicated loopback connection string.
+
+Startup launches a hidden user process bound only to `127.0.0.1`, initializes its single-member replica set if needed and waits for PRIMARY. Repeated starts/stops are safe. Before initialization, reuse or shutdown, the scripts check the server's actual data directory, bind address, port and replica-set topology; a different instance or changed configuration is refused. Redirected paths outside the workspace and non-empty data directories without an installation manifest are refused. Stop uses MongoDB's graceful shutdown command and retains all files; scripts never force-kill a process or delete a database. Closing the application terminal does not stop the detached database; use Stop-LocalMongo.ps1.
+
+This instance uses loopback-only access without database authentication and is intended for a trusted Windows workstation. It is not configured for LAN sharing or unattended Windows-service startup. A single member provides transactions and durable local storage. Local backup automation is described below; high availability remains separate work.
+
+### Isolated local application commands
+
+Keep the database running, then open separate PowerShell terminals:
+
+```powershell
+.\scripts\windows\Start-LocalBackend.ps1       # API: http://localhost:5001
+# Optional watched backend: .\scripts\windows\Start-LocalBackend.ps1 -Mode dev
+.\scripts\windows\Start-LocalFrontend.ps1      # UI:  http://localhost:5174
+```
+
+The backend launcher explicitly selects `backend/.env.local`, overrides inherited database/DNS settings, validates the dedicated URI, and checks the local server's identity before launching. The frontend uses Vite mode `school-local` and the local API on port 5001. Do not use the ordinary `npm run dev` or `npm run seed` commands to select this installation: those retain the project's original environments.
+
+To provision a local Super Admin, first enter your own `SUPER_ADMIN_EMAIL` and a valid `SUPER_ADMIN_PASSWORD` in **backend/.env.local**, then explicitly run:
+
+```powershell
+.\scripts\windows\Start-LocalBackend.ps1 -Mode seed
+```
+
+No seed was run during verification. Use Ctrl+C to stop the local backend/frontend before stopping MongoDB or running the restart verification. Moving the checkout changes its absolute storage path; the safety manifest/configuration must be deliberately reviewed rather than silently reused. Preserve the entire data directory and all database collections in any backup plan; do not delete `.local` as disposable test output.
+
+### Offline and persistence verification - 26 November 2026
+
+Verified with installed **MongoDB 8.2.6**, Node.js **24.13.1** and the Windows PowerShell wrappers. `mongosh` was not installed and was not needed.
+
+- Setup, repeated setup/start/stop and PRIMARY status checks passed. No Windows service, registry, PATH, firewall or execution-policy changes were made.
+- `Test-LocalMongo.ps1` passed offline insert/update/read, transaction commit and deliberate rollback, then graceful shutdown/restart and readback of the committed record **and unique index**. The verification client blocks DNS lookup and every socket outside `127.0.0.1:27018`; Windows network adapters are not disabled.
+- Verification writes only a uniquely identified proof record in the local `local_replica_verification` collection and `.local/mongodb/verification.json`. These are retained as persistence evidence. Each run restarts this dedicated instance and restores its initial running/stopped state; stop application users first.
+- A fake `mongodb+srv://blocked.invalid/production` value in the local environment was rejected **before connection**, and the original local file was restored. A missing explicit binary produced a prerequisite error without installation/configuration changes. No production Atlas connection was made.
+- Local API startup returned `{"status":"ok","database":"connected"}` on port 5001. The separate frontend served on 5174 and resolved its API to 5001. Both temporary application processes were stopped after checking.
+- **7/7 focused tests** passed for local URI/environment rejection, network isolation, generated configuration and existing database configuration behaviour. Lint passed. Existing application source and runtime dependencies were unchanged for this setup work.
+
+Final state: local MongoDB stopped cleanly, persistent data retained, generated local environments ignored by Git. No commit, push or deployment was performed.
+
+## Local Backup & Recovery - 26 November 2026
+
+The Super Admin workspace now includes **Backup & Recovery** (`/backups`). It supports downloadable encrypted full application-database snapshots, daily backups, retained history/audits, PDF backup summaries and verified recovery on another Windows computer. Full archives contain every school's accounts and records, so **only Super Admins** may administer them. School Administrators, teachers and students cannot access the archives or their history.
+
+### Enable and create a backup
+
+New Windows local setups include `BACKUPS_ENABLED=true` in **backend/.env.local**. Older local installations must add this setting to that local file; this workspace has been updated. The ordinary environment example defaults it to false. Enabled backup mode refuses SRV/Atlas/remote URIs during configuration validation, before server connection. At runtime the actual MongoDB client, database name, replica-set topology and single loopback member are checked as well. Backup administration also requires a loopback HTTP connection, an active Super Admin session, trusted Origin for mutations and current-password reauthentication for backup creation, inspection, restore and scheduling. Requests are rate limited.
+
+Start the independent local database/backend/frontend using the Windows scripts above, sign in as Super Admin and open Backup & Recovery:
+
+1. Enter your current account password and choose a **recovery passphrase of at least 16 characters, at most 256 UTF-8 bytes**. Keep the exact phrase separately from the encrypted file; the application cannot recover it. Credentials are cleared from the page after each operation and are not stored in browser storage or audit logs.
+2. Choose **Create full backup**. The application verifies the completed archive before marking it complete. Download its `.schoolbackup` file and optional **PDF summary** from history. Summaries identify schools, backup date/status, collection counts, encryption method and SHA-256; they contain no recovery phrase, account password or password hash.
+3. Keep a downloaded copy on a separate device/drive. Automatic files on the same computer do not protect against loss of that computer. This feature performs no cloud upload and never uses Atlas or an online PDF/encryption service.
+
+Archives are versioned, streaming, gzip-compressed BSON snapshots encrypted with **AES-256-GCM** and a per-file random salt/nonce. Keys use scrypt (`N=32768`, `r=8`, `p=1`, 32 bytes); the format header is authenticated too. No plaintext database dump is written to disk. A snapshot transaction provides one consistent read of the application records, including hidden account password hashes, exact BSON numeric/date/binary types, retained/cancelled/archived records, medical records, audits, numbering reservations, published documents, all stored logo versions and settings. Collection options and indexes are included. Independent collection hashes/counts and the encrypted file's SHA-256 supplement the GCM authentication tag.
+
+Files live in ignored **.local/backups/**. History and audit records live in the active database's `_backupHistory` and `_backupAudit` collections and are included in future snapshots. The interface shows the latest 100 jobs and 200 audit events; older entries remain retained in the database. Missing/off-device archive files do not erase history. Machine environment files/JWT secrets, Windows-protected scheduling keys, MongoDB internal `system.*` collections and earlier backup files themselves are not packed recursively into a database snapshot. Local logo bytes are included; legacy external logo URLs remain references to their external hosts.
+
+### Automatic daily backups
+
+In the same page, re-enter account credentials/recovery phrase, enable daily backups and choose a time. The timezone is **Africa/Lagos**, default **02:00**. The backend checks once per minute and at startup, creates at most one successful daily archive per local calendar date, and catches up after that day's configured time when the backend starts later. **The local backend and MongoDB must be running**. No Windows task/service is silently registered. Graceful backend shutdown waits for an active scheduled backup to finish.
+
+The recovery phrase for automation is encrypted with **Windows DPAPI CurrentUser**, passed to PowerShell through stdin rather than command arguments and saved only as a protected blob. It can be unlocked by the backend's Windows account on that computer; it is not a portable replacement for knowing the recovery phrase. Manual archive files remain portable using that phrase. Database operation leases prevent overlapping manual/daily/recovery jobs; schedule state and last-success dates survive backend restarts. Failures remain visible in audit/history, and successful backups are never overwritten or automatically deleted. Manage disk capacity and separately retained copies according to the school's retention policy.
+
+### Restore on another computer
+
+1. Install/copy the same application and prerequisites, run **Setup-LocalMongo.ps1** and **Start-LocalMongo.ps1**, then provision a local Super Admin with your own bootstrap credentials using **Start-LocalBackend.ps1 -Mode seed**. Use an empty school installation. Start the local backend/frontend and sign in as that bootstrap Super Admin.
+2. Upload the encrypted `.schoolbackup` file. Enter the **new computer's current account password** and the **original archive recovery phrase**. Choose **Verify backup and show school identity**. Complete authenticated decryption, inventory/count/checksum validation and school identities are checked before restore writes. Wrong phrases, altered/truncated files and unexpected identities fail closed.
+3. Enter every displayed school ID, a recovery reason and the literal **RESTORE**, then re-enter credentials and choose **Create and verify recovery database**. An existing nonempty installation with different school IDs is refused. An empty installation can receive the verified school identities from the archive.
+4. The application first creates a complete encrypted **pre-restore backup** of the current installation using the entered recovery phrase. It then restores only into a **new `school_recovery_<24 hex digits>` database**. The current database is never dropped or overwritten. All restored BSON records are reread and hashed, counts/identities are checked, and indexes are recreated. Failure leaves the new target inactive/quarantined and the original installation intact.
+5. Successful recovery atomically records its verification proof/audits, revokes restored sessions, clears copied operation locks and disables transferred daily scheduling. Password hashes and other account attributes remain intact; sign in with **passwords valid when the backup was taken**, rather than the new computer's bootstrap credentials.
+6. Stop the current backend with Ctrl+C. Leave MongoDB and the frontend running. Use the exact command displayed by the recovery page, for example:
+
+```powershell
+.\scripts\windows\Start-RecoveredBackend.ps1 -Database school_recovery_0123456789abcdef01234567
+```
+
+The example database name must be replaced with the **actual verified name returned by recovery**. The launcher validates its fixed local connection, this workspace's MongoDB data directory, completed verification proof and school IDs before starting the recovered backend on port 5001. The frontend remains on 5174. It does not rewrite the original local environment; the ordinary Start-LocalBackend.ps1 still selects the original database. Keep one chosen installation active. Reconfigure daily backups for the new Windows account and download a fresh archive after recovery.
+
+`mongodump`, `mongorestore`, `mongosh`, external PDF services and new runtime dependencies are not required. This logical backup format covers the application's ordinary collections; unsupported views, time-series or capped collections cause explicit failure rather than an incomplete successful backup. Archive and expanded-data safety limits are 100 GiB, with bounded record/batch memory; normal MongoDB snapshot transaction duration/storage limits still apply. Interrupted operations never make partial archive files downloadable. Backup/recovery does not add browser offline synchronization, cloud replication or automatic Windows startup.
+
+### Verification results
+
+- Full backend regression passed **210/210**, with zero failures or skips. The final focused backup suite passed **17/17**. Coverage includes permissions/current-password/CSRF checks, no-command rejection of remote/SRV clients, encrypted downloads/PDF summaries, binary/log/account/numeric fidelity, wrong phrases and corrupt files, school mismatch rejection, pre-restore snapshots, overlapping jobs, repeated recovery, persisted daily scheduling, Unicode DPAPI phrases and real Windows-protected scheduled backups with graceful shutdown.
+- Actual portable restoration was tested between **two independent local MongoDB servers**, not only between databases on one server. Restored original account hashes, retained records, BSON types and unique indexes were checked.
+- On installed **MongoDB 8.2.6**, synthetic drill data was backed up and restored into separate `school_recovery_*` databases. **Start-RecoveredBackend.ps1** started the restored application; health, original account login, retained backup history and disabled transferred schedule passed. The existing `dev_bigi_school_local` business records were not restored over. Drill evidence is retained in **.local/backups/recovery-drill.json** and its encrypted drill archives. A dotenv string-override bug found by this check was fixed and regression tested.
+- Live headless Edge with external HTTP requests blocked passed backup creation, archive/PDF downloads, encrypted upload, identity inspection/confirmation, actual recovery and daily-schedule UI execution using Windows-protected secrets. No production Atlas connection was made.
+- Lint and the frontend production build passed. Vite's existing bundle advisory remains (**634.98 kB** before gzip, **178.67 kB** gzipped). Physical print/PDF-reader variations and full keyboard/mobile accessibility remain manual checks.
+
+MongoDB and temporary application/browser processes were stopped after verification; persistent local data and encrypted evidence were retained. No Windows system configuration, production environments or Atlas data were changed. Nothing was committed, pushed or deployed.

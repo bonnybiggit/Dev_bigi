@@ -9,6 +9,7 @@ import { authenticate, publicUser, requireRoles } from "../middleware/auth.js";
 import { Staff } from "../models/Staff.js";
 import { Student } from "../models/Student.js";
 import { objectId } from "../validation/academic.js";
+import { schoolBranding } from "../services/branding.js";
 const loginSchema = z
   .object({
     email: z
@@ -16,14 +17,20 @@ const loginSchema = z
       .max(254)
       .transform((v) => v.toLowerCase()),
     password: z.string().min(1).max(72),
+    schoolId: objectId.optional(),
   })
   .strict();
 export function authRoutes(config) {
   const router = Router();
   const cookie = {
     httpOnly: true,
-    secure: config.NODE_ENV === "production",
-    sameSite: config.NODE_ENV === "production" ? "none" : "strict",
+    secure: config.SECURE_COOKIES === true || config.NODE_ENV === "production",
+    sameSite:
+      config.SECURE_COOKIES === true
+        ? "strict"
+        : config.NODE_ENV === "production"
+          ? "none"
+          : "strict",
     path: "/",
   };
   const loginLimiter = rateLimit({
@@ -33,7 +40,8 @@ export function authRoutes(config) {
     legacyHeaders: false,
     message: { message: "Too many attempts. Try again in 15 minutes." },
   });
-  function issueSession(res, user) {
+  async function issueSession(res, user) {
+    const school = user.schoolId ? await School.findById(user.schoolId) : null;
     const token = jwt.sign(
       { version: user.sessionVersion ?? 0 },
       config.JWT_SECRET,
@@ -50,7 +58,7 @@ export function authRoutes(config) {
         ...cookie,
         maxAge: 8 * 60 * 60 * 1000,
       })
-      .json({ user: publicUser(user) });
+      .json({ user: publicUser(user), school: schoolBranding(school) });
   }
   const login = (role) => async (req, res) => {
     const input = loginSchema.parse(req.body);
@@ -62,7 +70,13 @@ export function authRoutes(config) {
       user?.passwordHash ||
         "$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxLxLTqFnQx6Qdtg5cwx9y9.3Ye",
     );
-    if (!valid || !user?.isActive || user.role !== role)
+    if (
+      !valid ||
+      !user?.isActive ||
+      user.role !== role ||
+      (input.schoolId &&
+        String(user.schoolId).toLowerCase() !== input.schoolId.toLowerCase())
+    )
       return res
         .status(401)
         .json({ message: "Invalid administrator credentials." });
@@ -189,7 +203,10 @@ export function authRoutes(config) {
     },
   );
   router.get("/me", authenticate(config), (req, res) =>
-    res.json({ user: publicUser(req.user) }),
+    res.json({
+      user: publicUser(req.user),
+      school: schoolBranding(req.school),
+    }),
   );
   router.post("/logout", (_req, res) =>
     res.clearCookie("dev_bigi_session", cookie).status(204).end(),

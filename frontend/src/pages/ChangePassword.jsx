@@ -2,9 +2,10 @@ import { useState } from "react";
 import { LockKeyhole } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { errorMessage } from "../lib/api";
+import Brand from "../components/Brand";
 
 export default function ChangePassword() {
-  const { changePassword, logout } = useAuth();
+  const { changePassword, logout, school } = useAuth();
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   async function submit(event) {
@@ -28,6 +29,7 @@ export default function ChangePassword() {
   return (
     <div className="password-page">
       <section className="password-card">
+        <Brand school={school} />
         <span className="login-lock">
           <LockKeyhole />
         </span>

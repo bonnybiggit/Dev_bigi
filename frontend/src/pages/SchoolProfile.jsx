@@ -3,6 +3,8 @@ import { Save, School } from "lucide-react";
 import { api } from "../lib/api";
 import { configurationError, schoolTypes } from "../lib/academicConfiguration";
 import ConfigurationFields from "../components/ConfigurationFields";
+import { useAuth } from "../context/AuthContext";
+import { SchoolLogo } from "../components/SchoolIdentity";
 const fields = [
   {
     name: "name",
@@ -31,14 +33,15 @@ const fields = [
   },
   {
     name: "logoUrl",
-    label: "Logo image URL",
-    type: "url",
+    label: "Logo URL (legacy HTTPS or uploaded logo)",
     maxLength: 2048,
     placeholder: "https://…",
-    help: "Use a publicly accessible HTTPS image URL. Leave blank to remove the logo.",
+    help: "Upload below for local/offline use. HTTPS logos require internet. Leave blank and save to remove the logo.",
   },
 ];
 export default function SchoolProfile() {
+  const { setSchool, user } = useAuth();
+  const [logoFile, setLogoFile] = useState(null);
   const [profile, setProfile] = useState(null);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -64,8 +67,40 @@ export default function SchoolProfile() {
       const { data } = await api.put("/school/profile", profile);
       setProfile(data.profile);
       setNotice("School profile updated successfully.");
+      setSchool(data.profile);
     } catch (e) {
       setError(configurationError(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function uploadLogo(event) {
+    event.preventDefault();
+    if (!logoFile) return;
+    setBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      if (
+        !["image/png", "image/jpeg"].includes(logoFile.type) ||
+        logoFile.size > 256 * 1024
+      )
+        throw new Error("Choose a PNG or JPEG logo at most 256 KiB.");
+      const data = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result.split(",")[1]);
+        reader.onerror = () => reject(new Error("Unable to read logo."));
+        reader.readAsDataURL(logoFile);
+      });
+      const response = await api.post("/school/profile/logo", {
+        contentType: logoFile.type,
+        data,
+      });
+      setProfile(response.data.profile);
+      setSchool(response.data.profile);
+      setNotice("School logo stored in this installation's database.");
+    } catch (e) {
+      setError(e.response ? configurationError(e) : e.message);
     } finally {
       setBusy(false);
     }
@@ -97,11 +132,7 @@ export default function SchoolProfile() {
           <div className="panel-heading">
             <div className="profile-identity">
               {profile.logoUrl ? (
-                <img
-                  src={profile.logoUrl}
-                  alt={`${profile.name} logo`}
-                  referrerPolicy="no-referrer"
-                />
+                <SchoolLogo school={profile} />
               ) : (
                 <span className="banner-icon">
                   <School size={30} />
@@ -133,6 +164,34 @@ export default function SchoolProfile() {
               </button>
             </div>
           </form>
+          <form onSubmit={uploadLogo} className="profile-form">
+            <label>
+              Upload school logo (PNG/JPEG, up to 256 KiB and 1024 × 1024
+              pixels)
+              <input
+                type="file"
+                accept="image/png,image/jpeg"
+                onChange={(e) => setLogoFile(e.target.files[0] || null)}
+              />
+            </label>
+            <p>
+              Save other profile edits before uploading. Logos are stored in
+              this installation's database; include it in backups.
+            </p>
+            <button className="btn secondary" disabled={busy || !logoFile}>
+              Upload logo
+            </button>
+          </form>
+          <div className="school-login-links">
+            <h3>School sign-in links</h3>
+            {["school", "teacher", "student"].map((role) => (
+              <p key={role}>
+                <a href={`/${role}-login?school=${user.schoolId}`}>
+                  {role} sign in
+                </a>
+              </p>
+            ))}
+          </div>
         </section>
       )}
     </>

@@ -9,6 +9,10 @@ export function readConfig(env = process.env) {
         .default("development"),
       PORT: z.coerce.number().int().min(1).max(65535).default(5000),
       MONGODB_URI: z.string().min(1),
+      BACKUPS_ENABLED: z
+        .enum(["true", "false"])
+        .default("false")
+        .transform((value) => value === "true"),
       DNS_SERVERS: z
         .string()
         .default("")
@@ -27,6 +31,20 @@ export function readConfig(env = process.env) {
         ),
       JWT_SECRET: z.string().min(32),
       FRONTEND_ORIGIN: z.url(),
+    })
+    .superRefine((config, context) => {
+      if (
+        config.BACKUPS_ENABLED &&
+        !/^mongodb:\/\/127\.0\.0\.1:\d+\/(dev_bigi_school_local|school_recovery_[a-f0-9]{24})\?replicaSet=[A-Za-z0-9_-]+$/.test(
+          config.MONGODB_URI,
+        )
+      )
+        context.addIssue({
+          code: "custom",
+          path: ["MONGODB_URI"],
+          message:
+            "Enabled backups require the dedicated local database; no Atlas/remote startup is allowed.",
+        });
     })
     .parse(env);
 }

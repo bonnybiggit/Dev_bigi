@@ -20,6 +20,13 @@ import {
   statusInput,
 } from "../validation/academic.js";
 import { mutateConfiguration, fail } from "../services/schoolConfiguration.js";
+import { SchoolLogo } from "../models/SchoolLogo.js";
+import {
+  decodeLogo,
+  logoInput,
+  validateLogoOwner,
+} from "../services/branding.js";
+import { rateLimit } from "express-rate-limit";
 
 const collation = { locale: "en", strength: 2 };
 const scope = (req) => ({ schoolId: req.user.schoolId });
@@ -70,17 +77,53 @@ export function schoolConfigurationRoutes() {
     const input = profileInput.parse(req.body);
     const profile = await mutateConfiguration(
       req.user.schoolId,
-      async (session) =>
-        schoolProfile(
+      async (session) => {
+        await validateLogoOwner(input.logoUrl, req.user.schoolId, session);
+        return schoolProfile(
           await School.findOneAndUpdate(
             { _id: req.user.schoolId },
             { $set: input },
             { new: true, runValidators: true, session },
           ),
-        ),
+        );
+      },
     );
     res.json({ profile });
   });
+  router.post(
+    "/profile/logo",
+    rateLimit({ windowMs: 15 * 60 * 1000, limit: 20 }),
+    async (req, res) => {
+      const input = logoInput.parse(req.body),
+        data = decodeLogo(input);
+      const profile = await mutateConfiguration(
+        req.user.schoolId,
+        async (session) => {
+          const [logo] = await SchoolLogo.create(
+            [
+              {
+                schoolId: req.user.schoolId,
+                contentType: input.contentType,
+                data,
+              },
+            ],
+            { session },
+          );
+          const school = await School.findOneAndUpdate(
+            { _id: req.user.schoolId },
+            {
+              $set: {
+                logoUrl: `/api/branding/schools/${req.user.schoolId}/logos/${logo.id}`,
+              },
+            },
+            { new: true, runValidators: true, session },
+          );
+          return schoolProfile(school);
+        },
+      );
+      res.status(201).json({ profile });
+    },
+  );
 
   router.get("/sessions", async (req, res) =>
     res.json({

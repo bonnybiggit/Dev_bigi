@@ -3,9 +3,10 @@ import { Link, useParams, useSearchParams } from "react-router-dom";
 import { teacherApi } from "../lib/teacher";
 import { errorMessage } from "../lib/api";
 import { useAuth } from "../context/AuthContext";
+import SchoolIdentity from "../components/SchoolIdentity";
 import Pagination from "../components/Pagination";
 export default function TeacherWorkspace({ mode }) {
-  const { user, changePassword } = useAuth();
+  const { user, school, changePassword } = useAuth();
   const { id } = useParams();
   const [params] = useSearchParams();
   const [context, setContext] = useState(null),
@@ -108,8 +109,10 @@ export default function TeacherWorkspace({ mode }) {
               )?.name || "No active term"}
             </p>
           )}
-          {context?.school.logo && (
-            <img src={context.school.logo} alt="School logo" width="64" />
+          {context && (
+            <div className="no-print">
+              <SchoolIdentity school={school} />
+            </div>
           )}
         </div>
       </div>

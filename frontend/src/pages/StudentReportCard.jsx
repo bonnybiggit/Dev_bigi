@@ -4,6 +4,7 @@ import { Printer } from "lucide-react";
 import { api } from "../lib/api";
 import { configurationError } from "../lib/academicConfiguration";
 import { markText } from "../lib/examinations";
+import SchoolIdentity from "../components/SchoolIdentity";
 export default function StudentReportCard({ portal = false }) {
   const { id, studentId, cardId } = useParams();
   const [publication, setPublication] = useState(""),
@@ -89,15 +90,7 @@ export default function StudentReportCard({ portal = false }) {
           )}
           <article className="student-report-card">
             <header>
-              {portal && data.school?.logoUrl && (
-                <img src={data.school.logoUrl} alt="School logo" width="72" />
-              )}
-              <h2>{card.school.name}</h2>
-              <p>
-                {[card.school.address, card.school.city, card.school.country]
-                  .filter(Boolean)
-                  .join(", ")}
-              </p>
+              <SchoolIdentity school={{ ...data.school, ...card.school }} />
               <h3>{card.examinationName}</h3>
               <p>
                 {card.sessionName} · {card.termName} · {card.className}

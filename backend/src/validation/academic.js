@@ -124,12 +124,18 @@ export const profileInput = z
       .max(2048)
       .refine((value) => {
         if (!value) return true;
+        if (
+          /^\/api\/branding\/schools\/[a-f\d]{24}\/logos\/[a-f\d]{24}$/i.test(
+            value,
+          )
+        )
+          return true;
         try {
           const url = new URL(value);
           return url.protocol === "https:" && !url.username && !url.password;
         } catch {
           return false;
         }
-      }, "Logo must be an HTTPS image URL without credentials"),
+      }, "Choose an uploaded school logo or an HTTPS image URL without credentials"),
   })
   .strict();

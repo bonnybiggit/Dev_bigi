@@ -2246,6 +2246,120 @@ td:first-child {
   line-height: 1.45;
   overflow-wrap: anywhere;
 }
+.desktop-setup {
+  background: #f2f6fc;
+  min-height: 100vh;
+  padding: 32px 20px;
+}
+.desktop-setup main {
+  max-width: 900px;
+  margin: auto;
+  background: white;
+  border: 1px solid #dce5f2;
+  border-radius: 16px;
+  padding: 32px;
+}
+.desktop-setup h1 {
+  font-size: 28px;
+  margin-bottom: 16px;
+}
+.desktop-setup p {
+  line-height: 1.7;
+  margin: 16px 0;
+}
+.desktop-setup fieldset {
+  margin: 20px 0;
+  border: 1px solid #dce5f2;
+  border-radius: 8px;
+  padding: 20px;
+}
+.desktop-setup form > fieldset {
+  border: 0;
+  padding: 0;
+}
+.desktop-setup legend {
+  font-weight: 700;
+  padding: 0 8px;
+}
+.desktop-setup label {
+  display: block;
+  margin: 14px 0;
+}
+.desktop-setup input,
+.desktop-setup select {
+  margin-top: 8px;
+}
+.desktop-setup footer {
+  margin-top: 30px;
+  color: #65758d;
+  font-size: 13px;
+}
+.backup-workspace .profile-panel {
+  padding: 24px;
+  margin-bottom: 24px;
+}
+.backup-workspace .profile-panel h2 {
+  margin-bottom: 12px;
+}
+.backup-workspace .profile-panel > label {
+  display: block;
+  margin: 20px 0 12px;
+}
+.backup-workspace .profile-panel > button {
+  margin: 12px 8px 12px 0;
+}
+.backup-workspace .profile-panel input,
+.backup-workspace .profile-panel select {
+  margin-top: 8px;
+}
+.backup-workspace td button {
+  padding: 8px;
+  text-decoration: underline;
+}
+.backup-workspace code {
+  display: block;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+.school-logo {
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+.school-identity {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  overflow-wrap: anywhere;
+}
+.school-identity p {
+  margin: 4px 0;
+}
+.brand {
+  align-items: flex-start;
+  overflow-wrap: anywhere;
+}
+.brand .brand-icon {
+  flex-shrink: 0;
+}
+.brand .school-logo {
+  width: 42px;
+  height: 42px;
+}
+.brand .brand-subtitle {
+  white-space: normal;
+  letter-spacing: normal;
+  line-height: 1.5;
+}
+.brand .brand-subtitle p {
+  margin: 4px 0;
+}
+.school-login-links {
+  padding: 24px;
+  overflow-wrap: anywhere;
+}
 .registration-form-header {
   display: flex;
   gap: 6mm;

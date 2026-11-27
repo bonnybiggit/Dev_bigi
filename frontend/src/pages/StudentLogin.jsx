@@ -5,8 +5,10 @@ import Brand from "../components/Brand";
 import { useAuth } from "../context/AuthContext";
 import { dashboardPath } from "../lib/navigation";
 import { errorMessage } from "../lib/api";
+import useLoginSchool from "../hooks/useLoginSchool";
 export default function StudentLogin() {
   const { user, login } = useAuth();
+  const { school, schoolId, setSchoolId } = useLoginSchool();
   const [show, setShow] = useState(false),
     [busy, setBusy] = useState(false),
     [error, setError] = useState("");
@@ -36,7 +38,7 @@ export default function StudentLogin() {
   return (
     <div className="password-page student-login">
       <section className="password-card">
-        <Brand />
+        <Brand school={school} />
         <h1>Student sign in</h1>
         <p>
           Use the school ID and admission number given to you by your school.
@@ -46,6 +48,8 @@ export default function StudentLogin() {
             School ID
             <input
               name="schoolId"
+              value={schoolId}
+              onChange={(e) => setSchoolId(e.target.value.trim())}
               required
               pattern="[a-fA-F0-9]{24}"
               maxLength={24}
@@ -90,6 +94,7 @@ export default function StudentLogin() {
           </button>
         </form>
         <p>Forgot your password? Ask your school administrator for help.</p>
+        <footer className="no-print">Developed by Dev_Bigi</footer>
       </section>
     </div>
   );

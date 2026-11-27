@@ -327,10 +327,9 @@ export function financeRoutes() {
       financeId.parse(req.params.id),
     );
     const school = Object.fromEntries(
-      ["name", "address", "city", "country", "phone", "email"].map((key) => [
-        key,
-        req.school[key] || "",
-      ]),
+      ["name", "logoUrl", "address", "city", "country", "phone", "email"].map(
+        (key) => [key, req.school[key] || ""],
+      ),
     );
     res.json({ payment: publicRecord(payment), school, currency: "NGN" });
   });

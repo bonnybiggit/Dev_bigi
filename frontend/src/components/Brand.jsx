@@ -1,12 +1,20 @@
 import { GraduationCap } from "lucide-react";
-export default function Brand() {
+import { SchoolLogo, SchoolContact } from "./SchoolIdentity";
+export default function Brand({ school }) {
   return (
     <div className="brand">
       <span className="brand-icon">
-        <GraduationCap size={25} />
+        {school?.logoUrl ? (
+          <SchoolLogo school={school} />
+        ) : (
+          <GraduationCap size={25} />
+        )}
       </span>
       <div>
-        Dev_Bigi<span className="brand-subtitle">SCHOOL MANAGEMENT</span>
+        {school?.name || "School Management"}
+        <div className="brand-subtitle">
+          {school ? <SchoolContact school={school} /> : "SCHOOL MANAGEMENT"}
+        </div>
       </div>
     </div>
   );

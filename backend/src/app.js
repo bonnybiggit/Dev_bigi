@@ -11,13 +11,23 @@ import { ConfigurationError } from "./services/schoolConfiguration.js";
 import { examinationRoutes } from "./routes/examinations.js";
 import { teacherRoutes } from "./routes/teacher.js";
 import { studentPortalRoutes } from "./routes/studentPortal.js";
-export function createApp(config) {
+import { brandingRoutes } from "./routes/branding.js";
+import { backupRoutes, buildBackupService } from "./routes/backups.js";
+import { desktopRoutes } from "./routes/desktop.js";
+export function createApp(
+  config,
+  { backups = buildBackupService(config) } = {},
+) {
   const app = express();
   app.disable("x-powered-by");
+  app.locals.backups = backups;
   app.use(
     helmet(),
     cors({ origin: config.FRONTEND_ORIGIN, credentials: true }),
-    express.json({ limit: "64kb" }),
+    (req, res, next) =>
+      express.json({
+        limit: req.path === "/api/school/profile/logo" ? "360kb" : "64kb",
+      })(req, res, next),
     cookieParser(),
   );
   app.use("/api", (req, res, next) => {
@@ -37,6 +47,9 @@ export function createApp(config) {
     });
   });
   app.use("/api/auth", authRoutes(config));
+  app.use("/api/desktop", desktopRoutes(config));
+  app.use("/api/backups", backupRoutes(config, backups));
+  app.use("/api/branding", brandingRoutes());
   app.use("/api/teacher", teacherRoutes(config));
   app.use("/api/student", studentPortalRoutes(config));
   app.use("/api/schools", schoolRoutes(config));

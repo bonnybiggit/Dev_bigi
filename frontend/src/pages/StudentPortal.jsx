@@ -6,6 +6,7 @@ import { money } from "../lib/finance";
 import { markText } from "../lib/examinations";
 import { useAuth } from "../context/AuthContext";
 import Pagination from "../components/Pagination";
+import SchoolIdentity from "../components/SchoolIdentity";
 export default function StudentPortal({ mode }) {
   const { id } = useParams();
   const { user, changePassword } = useAuth();
@@ -110,8 +111,10 @@ export default function StudentPortal({ mode }) {
             </p>
           )}
         </div>
-        {context?.school.logoUrl && (
-          <img src={context.school.logoUrl} alt="School logo" width="64" />
+        {context?.school && (
+          <div className="no-print">
+            <SchoolIdentity school={context.school} />
+          </div>
         )}
       </div>
       {notice && <p role="status">{notice}</p>}
@@ -404,7 +407,7 @@ export default function StudentPortal({ mode }) {
               </button>
               <article className="payment-receipt">
                 <header>
-                  <h2>{context.school.name}</h2>
+                  <SchoolIdentity school={data.school} />
                   <h3>Payment receipt</h3>
                 </header>
                 {Object.entries({

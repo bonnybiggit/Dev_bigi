@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import {
   LayoutDashboard,
@@ -23,7 +23,10 @@ import Brand from "./Brand";
 import { useAuth } from "../context/AuthContext";
 import { errorMessage } from "../lib/api";
 export default function Layout() {
-  const { user, logout } = useAuth();
+  const { user, school, logout } = useAuth();
+  useEffect(() => {
+    document.title = school?.name || "School Management";
+  }, [school]);
   const [open, setOpen] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -139,7 +142,7 @@ export default function Layout() {
         />
       )}
       <aside className={`sidebar ${open ? "is-open" : ""}`}>
-        <Brand />
+        <Brand school={school} />
         <button
           className="mobile-close icon-button"
           aria-label="Close navigation"
@@ -188,6 +191,10 @@ export default function Layout() {
                 <School size={20} />
                 Schools
               </NavLink>
+              <NavLink to="/backups" onClick={() => setOpen(false)}>
+                <ShieldCheck size={20} />
+                Backup & Recovery
+              </NavLink>
             </>
           )}
         </nav>
@@ -214,11 +221,7 @@ export default function Layout() {
               {error}
             </p>
           )}
-          <div className="sidebar-footer">
-            Dev_Bigi School Management
-            <br />
-            Foundation · v1.0
-          </div>
+          <div className="sidebar-footer">Developed by Dev_Bigi</div>
         </div>
       </aside>
       <div className="main-shell">
@@ -254,7 +257,9 @@ export default function Layout() {
                     )?.label || "Overview"
                   : location.pathname === "/schools"
                     ? "Schools"
-                    : "Overview"}
+                    : location.pathname === "/backups"
+                      ? "Backup & Recovery"
+                      : "Overview"}
             </strong>
           </div>
           <div className="account">
@@ -279,8 +284,8 @@ export default function Layout() {
           <Outlet />
         </main>
         <footer className="main-footer">
-          © {new Date().getFullYear()} Dev_Bigi School Management System
-          <span>Built for better school operations.</span>
+          <span>{school?.name || "School Management"}</span>
+          <span>Developed by Dev_Bigi</span>
         </footer>
       </div>
     </div>

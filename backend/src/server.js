@@ -2,59 +2,25 @@ import mongoose from "mongoose";
 import { readConfig } from "./config.js";
 import { connectDB } from "./db.js";
 import { createApp } from "./app.js";
-import { initializeSchoolConfiguration } from "./services/schoolConfiguration.js";
-import { Staff } from "./models/Staff.js";
-import { Student } from "./models/Student.js";
-import { User } from "./models/User.js";
-import { StudentPortalAudit } from "./models/StudentPortalAudit.js";
-import { TeacherAssignment } from "./models/TeacherAssignment.js";
-import { TeacherAudit } from "./models/TeacherAudit.js";
-import { initialiseAdmissions } from "./models/Admissions.js";
-import { Guardian } from "./models/Guardian.js";
-import { StudentGuardian } from "./models/StudentGuardian.js";
-import { Attendance } from "./models/Attendance.js";
-import { AttendanceAudit } from "./models/AttendanceAudit.js";
-import { initializeFinance } from "./models/Finance.js";
-import { Examination } from "./models/Examination.js";
-import {
-  Result,
-  ResultRevision,
-  ExaminationAudit,
-  ResultComment,
-  ReportCard,
-} from "./models/Result.js";
+import { initializeDatabase } from "./initializeDatabase.js";
 try {
   const config = readConfig();
   await connectDB(config.MONGODB_URI, config.DNS_SERVERS);
-  await initializeSchoolConfiguration();
-  await Staff.init();
-  await Student.init();
-  await Promise.all([User.init(), StudentPortalAudit.init()]);
-  await Promise.all([TeacherAssignment.init(), TeacherAudit.init()]);
-  await initialiseAdmissions();
-  await Promise.all([Guardian.init(), StudentGuardian.init()]);
-  await Promise.all([Attendance.init(), AttendanceAudit.init()]);
-  await initializeFinance();
-  await Promise.all(
-    [
-      Examination,
-      Result,
-      ResultRevision,
-      ExaminationAudit,
-      ResultComment,
-      ReportCard,
-    ].map((Model) => Model.init()),
-  );
-  const server = createApp(config).listen(config.PORT, () =>
+  await initializeDatabase();
+  const app = createApp(config);
+  const stopBackups = app.locals.backups?.start();
+  const server = app.listen(config.PORT, () =>
     console.log(`API listening on port ${config.PORT}`),
   );
   for (const signal of ["SIGINT", "SIGTERM"])
-    process.on(signal, () =>
+    process.on(signal, () => {
+      const backupsStopped = stopBackups?.();
       server.close(async () => {
+        await backupsStopped;
         await mongoose.disconnect();
         process.exit(0);
-      }),
-    );
+      });
+    });
 } catch (error) {
   console.error(
     "Startup failed:",
